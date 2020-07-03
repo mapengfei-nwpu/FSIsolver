@@ -2,7 +2,7 @@ from fenics import *
 from mshr import *
 import numpy as np
 
-def NSsolver(u0, p0, f, bcu, bcp, dt = 0.01, nu = 0.01):
+def myStokesSolver(u0, p0, f, bcu, bcp, dt = 0.01, nu = 0.01):
 
     # Define function spaces (P2-P1)
     V = u0.function_space()
@@ -99,7 +99,7 @@ def run_solver():
     ufile = File('NSsolver/u.pvd')
     
     for n in range(100):
-        u1, p1 = NSsolver(u0, p0, f, bcu, bcp, dt = dt, nu = mu)
+        u1, p1 = myStokesSolver(u0, p0, f, bcu, bcp, dt = dt, nu = mu)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
