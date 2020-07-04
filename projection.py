@@ -11,7 +11,7 @@ parameters["std_out_all_processes"] = False
 
 def PrejectionSolve(n, solution):
     mesh = RectangleMesh(Point(0, 0), Point(1, 1), n, n)
-    f = Expression((solution["fx"], solution["fy"]), degree=2, t=0)
+    f_exact = Expression((solution["fx"], solution["fy"]), degree=2, t=0)
     p_exact = Expression(solution["p"], degree=2, t=0)
     u_exact = Expression((solution["ux"], solution["uy"]), degree=2, t=0)
 
@@ -26,14 +26,13 @@ def PrejectionSolve(n, solution):
     q = TestFunction(Q)
 
     # Set parameter values
-    dt = 1e-5
+    dt = 1/n/n/4
     T = 0.1
     nu = 0.01
 
     # Define boundary conditions
     bcu = [DirichletBC(V, u_exact, "on_boundary")]
-    bcp = [DirichletBC(
-        Q, p_exact, "x[0] < DOLFIN_EPS && x[1] < DOLFIN_EPS", "pointwise")]
+    bcp = [DirichletBC(Q, p_exact, "on_boundary")]
 
     # Create functions
     u0 = Function(V)
@@ -81,7 +80,7 @@ def PrejectionSolve(n, solution):
         b2 = assemble(L2)
         [bc.apply(A2, b2) for bc in bcp]
         [bc.apply(p1.vector()) for bc in bcp]
-        solve(A2, p1.vector(), b2, "bicgstab", prec)
+        solve(A2, p1.vector(), b2, "bicgstab", "amg")
 
         # Velocity correction
         b3 = assemble(L3)
@@ -98,6 +97,5 @@ def PrejectionSolve(n, solution):
 
 
 
-for i in range (4):
-    for j in range(4):
-        PrejectionSolve(pow(2,1+j), solutions[i])
+
+PrejectionSolve(8, solutions[0])
