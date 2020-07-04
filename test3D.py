@@ -6,12 +6,12 @@ def run_solver():
     T = 5.0
     num_steps = 5000
     dt = T / num_steps
-    mu = 0.001
+    mu = 0.01
     # Create mesh
     channel = Box(Point(0, 0, 0), Point(2.2, 0.41, 0.41))
     cylinder = Cylinder(Point(0.2, 0.2, 0),Point(0.2,0.2,0.41), 0.05, 0.05)
     domain = channel - cylinder
-    mesh = generate_mesh(domain, 32)
+    mesh = generate_mesh(domain, 64)
 
     # Define function spaces
     V = VectorFunctionSpace(mesh, 'P', 2)
@@ -21,7 +21,7 @@ def run_solver():
     inflow =    'near(x[0], 0)'
     outflow =   'near(x[0], 2.2)'
     walls =     'near(x[1], 0) || near(x[1], 0.41)'
-    cylinder =  'on_boundary && x[0]>0.1 && x[0]<0.3 && x[1]>0.1 && x[1]<0.3 && x[2]>0 && x[2]<0.41'
+    cylinder =  'on_boundary && (x[0]-0.2)*(x[0]-0.2)+(x[1]-0.2)*(x[1]-0.2) < 0.0026'
 
     # Define inflow profile
     inflow_profile = ('4.0*1.5*x[1]*(0.41 - x[1]) / pow(0.41, 2)', '0', '0')

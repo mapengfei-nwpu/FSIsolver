@@ -1,3 +1,4 @@
 *.vtu
 *.pvd
 __pycache__
+*.pvtu
