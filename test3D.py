@@ -1,12 +1,12 @@
-from myStokesSolver import myStokesSolver
+from NavierStokesSolver import NavierStokesSolver
 from fenics import *
 from mshr import *
 def run_solver():
     "Run solver to compute and post-process solution"
     T = 5.0
-    num_steps = 5000
+    num_steps = 50000
     dt = T / num_steps
-    mu = 0.01
+    mu = 0.001
     # Create mesh
     channel = Box(Point(0, 0, 0), Point(2.2, 0.41, 0.41))
     cylinder = Cylinder(Point(0.2, 0.2, 0),Point(0.2,0.2,0.41), 0.05, 0.05)
@@ -36,17 +36,18 @@ def run_solver():
     
     u0 = Function(V)
     p0 = Function(Q)
-    f = Constant((0,0,0))
+    f = Function(V)
 
     # output velocity
     ufile = File('NSsolver/u.pvd')
+    navier_stokes_solver = NavierStokesSolver(u0, p0, bcu, bcp, dt = dt, nu = mu)
     
-    for n in range(100):
-        u1, p1 = myStokesSolver(u0, p0, f, bcu, bcp, dt = dt, nu = mu)
+    for n in range(1000):
+        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
-        print("step : ",n)
+        print("step : ", n)
 
 if __name__ == '__main__':
     run_solver()

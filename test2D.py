@@ -1,4 +1,4 @@
-from StokesSolver import myStokesSolver
+from NavierStokesSolver import NavierStokesSolver
 from fenics import *
 from mshr import *
 def run_solver():
@@ -36,17 +36,18 @@ def run_solver():
     
     u0 = Function(V)
     p0 = Function(Q)
-    f = Constant((0,0))
+    f = Function(V)
 
     # output velocity
-    ufile = File('NSsolver/u.pvd')
+    ufile = File('test/u.pvd')
+    navier_stokes_solver = NavierStokesSolver(u0, p0, bcu, bcp, dt = dt, nu = mu)
     
     for n in range(100):
-        u1, p1 = myStokesSolver(u0, p0, f, bcu, bcp, dt = dt, nu = mu)
+        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
-        print("step : ",n)
+        print("step : ", n)
 
 if __name__ == '__main__':
     run_solver()
