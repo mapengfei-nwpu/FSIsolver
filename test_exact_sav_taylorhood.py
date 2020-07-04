@@ -4,7 +4,7 @@ from fenics import *
 import numpy as np
 # Set parameter values
 delta = 0.1
-n = 16
+n = 4
 T = 1.0
 num_steps = n*n*2*2
 dt = T / num_steps
@@ -14,17 +14,20 @@ mesh = RectangleMesh(Point(0, 0), Point(1, 1), n, n)
 solution = solutions[1]
 V = VectorFunctionSpace(mesh, 'P', 2)
 Q = FunctionSpace(mesh, 'P', 1)
+P2 = VectorElement("Lagrange", mesh.ufl_cell(), 2)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+TH = P2 * P1
+W = FunctionSpace(mesh, TH)
 
 f_exact = Expression((solution["fx"], solution["fy"]), degree=2, t=0)
 p_exact = Expression(solution["p"], degree=2, t=0)
 u_exact = Expression((solution["ux"], solution["uy"]), degree=2, t=0)
-bcu = [DirichletBC(V, u_exact, "on_boundary")]
-bcp = [DirichletBC(Q, p_exact, "on_boundary")]
-bcu_sav = [DirichletBC(V, Constant((0,0)), "on_boundary")]
-bcp_sav = [DirichletBC(Q, Constant(0), "on_boundary")]
+bcu = [DirichletBC(W.sub(0), u_exact, "on_boundary")]
+bcp = [DirichletBC(W.sub(1), p_exact, "on_boundary")]
+bcu_sav = [DirichletBC(W.sub(0), Constant((0,0)), "on_boundary")]
+bcp_sav = [DirichletBC(W.sub(1), Constant(0),     "on_boundary")]
 
-u0 = Function(V)
-p0 = Function(Q)
+u0,p0 = Function(W).split(True)
 u0.interpolate(u_exact)
 p0.interpolate(p_exact)
 
@@ -33,8 +36,8 @@ k=Constant(dt)
 SS = Expression("S", degree=1, S=1.0)
 f1 = f_exact+grad(u0)*u0
 f2 = - u0/k
-navier_stokes_solver_1 = IPCSSolver(u0, p0, f_exact+grad(u0)*u0, dt = dt, nu = nu)
-navier_stokes_solver_2 = IPCSSolver(u0, p0, - u0/k,               dt = dt, nu = nu)
+navier_stokes_solver_1 = TaylorHoodSolver(u0, p0, f1, dt = dt, nu = nu)
+navier_stokes_solver_2 = TaylorHoodSolver(u0, p0, f2, dt = dt, nu = nu)
 
 final_step = int(0.1/dt)
 

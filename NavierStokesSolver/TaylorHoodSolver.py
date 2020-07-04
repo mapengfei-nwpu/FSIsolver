@@ -3,7 +3,7 @@ from mshr import *
 import numpy as np
 
 class TaylorHoodSolver:
-    def __init__(self, u0, p0, dt = 0.01, nu = 0.01):
+    def __init__(self, u0, p0, f, dt = 0.01, nu = 0.01):
         # Reconstruct element space
         mesh = u0.function_space().mesh()
         element1 = u0.function_space()._ufl_element
@@ -17,18 +17,16 @@ class TaylorHoodSolver:
         k = Constant(dt)
         self.w_ = Function(W)
         self.un, self.pn = Function(W).split(True)
-        self.f,_ = Function(W).split(True)
         
         # Define variational problem
-        F = inner((u-self.un)/k, v)*dx + inner(grad(self.un)*self.un, v)*dx + nu * inner(grad(u), grad(v))*dx - div(v)*p * dx + q*div(u)*dx - inner(self.f, v)*dx
+        F = inner((u-self.un)/k, v)*dx + inner(grad(self.un)*self.un, v)*dx + nu * inner(grad(u), grad(v))*dx - div(v)*p * dx + q*div(u)*dx - inner(f, v)*dx
         a = lhs(F)
         self.A = assemble(a)
         self.L = rhs(F)
 
-    def solve(self, u0, p0, f, bcu, bcp):
+    def solve(self, u0, p0, bcu, bcp):
         self.un.assign(u0)
         self.pn.assign(p0)
-        self.f.assign(f)
 
         # Compute tentative velocity step
         b = assemble(self.L)
@@ -74,14 +72,13 @@ def run_solver():
     bcp = [bcp_outflow]
     
     u0,p0 = Function(W).split(True)
-    f,_   = Function(W).split(True)
-
+    f = Constant((0,0))
     # output velocity
     ufile = File('TaylorHoodSolver/u.pvd')
-    navier_stokes_solver = TaylorHoodSolver(u0, p0, dt = dt, nu = nu)
+    navier_stokes_solver = TaylorHoodSolver(u0, p0, f, dt = dt, nu = nu)
     
     for n in range(100):
-        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
+        u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0

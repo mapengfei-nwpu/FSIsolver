@@ -22,28 +22,25 @@ f_exact = Expression((solution["fx"], solution["fy"]), degree=2, t=0)
 p_exact = Expression(solution["p"], degree=2, t=0)
 u_exact = Expression((solution["ux"], solution["uy"]), degree=2, t=0)
 bcu = [DirichletBC(W.sub(0), u_exact, "on_boundary")]
-bcp = [DirichletBC(W.sub(1), p_exact, "on_boundary")]
+bcp = [DirichletBC(W.sub(1), p_exact, "near(x[0],0) && near(x[1],0)","pointwise")]
 
 u0,p0 = Function(W).split(True)
-f,_   = Function(W).split(True)
 u0.interpolate(u_exact)
 p0.interpolate(p_exact)
-f.interpolate(f_exact)
 
 ufile = File('test/u.pvd')
-navier_stokes_solver = TaylorHoodSolver(u0, p0, dt = dt, nu = nu)
+navier_stokes_solver = TaylorHoodSolver(u0, p0,f_exact, dt = dt, nu = nu)
 
 final_step = int(0.1/dt)
 for n in range(final_step):
     f_exact.t = n*dt
     u_exact.t = n*dt
     p_exact.t = n*dt
-    f.interpolate(f_exact)
-    u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
+    u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
     u0.assign(u1)
     p0.assign(p1)
     ufile << u0
 
-
+print(n)
 print("||u||_2: ", np.sqrt(assemble(inner((u0-u_exact), (u0-u_exact))*dx)))
-print("||p||_2: ", np.sqrt(assemble((p1-p_exact)*(p1-p_exact)*dx)))
+print("||p||_2: ", np.sqrt(assemble((p0-p_exact)*(p0-p_exact)*dx)))
