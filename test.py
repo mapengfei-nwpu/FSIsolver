@@ -1,4 +1,4 @@
-from myStokesSolver import myStokesSolver
+from StokesSolver import myStokesSolver
 from fenics import *
 from mshr import *
 def run_solver():

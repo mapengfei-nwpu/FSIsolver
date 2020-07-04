@@ -2,7 +2,7 @@ from fenics import *
 from mshr import *
 import numpy as np
 
-class myStokesSolver:
+class NavierStokesSolver:
     def __init__(self, u0, p0, bcu, bcp, dt = 0.01, nu = 0.01):
         # Define function spaces (P2-P1)
         V = u0.function_space()
@@ -103,15 +103,15 @@ def run_solver():
     f = Function(V)
 
     # output velocity
-    ufile = File('classStokesSolver/u.pvd')
-    stokes_solver = myStokesSolver(u0, p0, bcu, bcp, dt = dt, nu = mu)
+    ufile = File('NavierStokesSolver/u.pvd')
+    navier_stokes_solver = NavierStokesSolver(u0, p0, bcu, bcp, dt = dt, nu = mu)
     
     for n in range(100):
-        u1, p1 = stokes_solver.solve(u0, p0, f, bcu, bcp)
+        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
-        print("step : ",n)
+        print("step : ", n)
 
 if __name__ == '__main__':
     run_solver()
