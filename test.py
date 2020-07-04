@@ -1,5 +1,6 @@
 from myStokesSolver import myStokesSolver
 from fenics import *
+from mshr import *
 def run_solver():
     "Run solver to compute and post-process solution"
     T = 5.0
@@ -46,3 +47,6 @@ def run_solver():
         p0.assign(p1)
         ufile << u0
         print("step : ",n)
+
+if __name__ == '__main__':
+    run_solver()

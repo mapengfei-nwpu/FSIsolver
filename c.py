@@ -95,7 +95,7 @@ A3 = assemble(a3)
 [bc.apply(A1) for bc in bcu]
 [bc.apply(A2) for bc in bcp]
 
-ufile = File('NSsolver/u.pvd')
+ufile = File('direct/u.pvd')
 
 # Time-stepping
 t = 0
