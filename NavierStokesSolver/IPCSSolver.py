@@ -3,7 +3,7 @@ from mshr import *
 import numpy as np
 
 class IPCSSolver:
-    def __init__(self, u0, p0, dt = 0.01, nu = 0.01):        
+    def __init__(self, u0, p0, f, dt = 0.01, nu = 0.01):        
         # Define function spaces (P2-P1)
         V = u0.function_space()
         Q = p0.function_space()
@@ -20,7 +20,6 @@ class IPCSSolver:
         self.u_  = Function(V)
         self.p_n = Function(Q)
         self.p_  = Function(Q)
-        self.f = Function(V)
 
         # Define expressions used in variational forms
         U  = 0.5*(self.u_n + u)
@@ -41,7 +40,7 @@ class IPCSSolver:
             + rho*dot(dot(self.u_n, nabla_grad(self.u_n)), v)*dx \
             + inner(sigma(U, self.p_n), epsilon(v))*dx \
             + dot(self.p_n*n, v)*ds - dot(nu*nabla_grad(U)*n, v)*ds \
-            - dot(self.f, v)*dx
+            - dot(f, v)*dx
         a1 = lhs(F1)
         self.L1 = rhs(F1)
 
@@ -58,10 +57,9 @@ class IPCSSolver:
         self.A2 = assemble(a2)
         self.A3 = assemble(a3)
 
-    def solve(self, u0, p0, f, bcu, bcp):
+    def solve(self, u0, p0, bcu, bcp):
         self.u_n.assign(u0)
         self.p_n.assign(p0)
-        self.f.assign(f)
 
         # Step 1: Tentative velocity step
         b1 = assemble(self.L1)
@@ -112,14 +110,14 @@ def run_solver():
     
     u0 = Function(V)
     p0 = Function(Q)
-    f = Function(V)
+    f = Constant((0,0))
 
     # output velocity
     ufile = File('IPCSSolver/u.pvd')
-    navier_stokes_solver = IPCSSolver(u0, p0, dt = dt, nu = mu)
+    navier_stokes_solver = IPCSSolver(u0, p0, f, dt = dt, nu = mu)
     
     for n in range(100):
-        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
+        u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
