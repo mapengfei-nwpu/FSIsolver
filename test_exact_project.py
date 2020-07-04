@@ -1,4 +1,4 @@
-from NavierStokesSolver import NavierStokesSolver
+from NavierStokesSolver import *
 from solutions import solutions
 from fenics import *
 import numpy as np

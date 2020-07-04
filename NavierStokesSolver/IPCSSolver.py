@@ -2,8 +2,8 @@ from fenics import *
 from mshr import *
 import numpy as np
 
-class IPCS:
-    def __init__(self, u0, p0, bcu, bcp, dt = 0.01, nu = 0.01):        
+class IPCSSolver:
+    def __init__(self, u0, p0, dt = 0.01, nu = 0.01):        
         # Define function spaces (P2-P1)
         V = u0.function_space()
         Q = p0.function_space()
@@ -115,8 +115,8 @@ def run_solver():
     f = Function(V)
 
     # output velocity
-    ufile = File('NavierStokesSolver/u.pvd')
-    navier_stokes_solver = IPCS(u0, p0, bcu, bcp, dt = dt, nu = mu)
+    ufile = File('IPCSSolver/u.pvd')
+    navier_stokes_solver = IPCSSolver(u0, p0, dt = dt, nu = mu)
     
     for n in range(100):
         u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)

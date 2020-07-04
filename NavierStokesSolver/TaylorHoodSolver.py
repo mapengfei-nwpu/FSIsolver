@@ -1,6 +1,5 @@
 from dolfin import *
 from mshr import *
-from solutions import solutions
 import numpy as np
 
 class TaylorHoodSolver:

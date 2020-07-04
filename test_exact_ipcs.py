@@ -1,13 +1,13 @@
-from IPCS import IPCS
+from NavierStokesSolver import *
 from solutions import solutions
 from fenics import *
 import numpy as np
 # Set parameter values
-n = 8
+n = 32
 T = 1.0
 num_steps = n*n*2*2
 dt = T / num_steps
-mu = 0.01
+nu = 0.01
 mesh = RectangleMesh(Point(0, 0), Point(1, 1), n, n)
 
 solution = solutions[1]
@@ -28,7 +28,7 @@ p0.interpolate(p_exact)
 f.interpolate(f_exact)
 
 ufile = File('test/u.pvd')
-navier_stokes_solver = IPCS(u0, p0, bcu, bcp, dt = dt, nu = mu)
+navier_stokes_solver = IPCS(u0, p0, dt = dt, nu = nu)
 
 final_step = int(0.1/dt)
 for n in range(final_step):
