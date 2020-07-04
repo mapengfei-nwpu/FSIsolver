@@ -6,7 +6,7 @@ def run_solver():
     T = 5.0
     num_steps = 5000
     dt = T / num_steps
-    mu = 0.01
+    mu = 0.001
     # Create mesh
     channel = Rectangle(Point(0, 0), Point(2.2, 0.41))
     cylinder = Circle(Point(0.2, 0.2), 0.05)
