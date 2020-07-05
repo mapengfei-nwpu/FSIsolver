@@ -3,7 +3,7 @@ from mshr import *
 import numpy as np
 
 class ProjectSolver:
-    def __init__(self, u0, p0, dt = 0.01, nu = 0.01):
+    def __init__(self, u0, p0, f, dt = 0.01, nu = 0.01):
         # Define function spaces (P2-P1)
         V = u0.function_space()
         Q = p0.function_space()
@@ -19,14 +19,13 @@ class ProjectSolver:
         self.p0 = Function(Q)
         self.u1 = Function(V)
         self.p1 = Function(Q)
-        self.f = Function(V)
 
         # Define coefficients
-        k = Constant(dt)
+        k  = Constant(dt)
 
         # Tentative velocity step
         F1 = (1/k)*inner(u - self.u0, v)*dx + inner(grad(self.u0)*self.u0, v)*dx + \
-            nu*inner(grad(u), grad(v))*dx - inner(self.f, v)*dx
+            nu*inner(grad(u), grad(v))*dx - inner(f, v)*dx
         a1 = lhs(F1)
         self.L1 = rhs(F1)
 
@@ -43,10 +42,9 @@ class ProjectSolver:
         self.A2 = assemble(a2)
         self.A3 = assemble(a3)
 
-    def solve(self, u0, p0, f, bcu, bcp):
+    def solve(self, u0, p0, bcu, bcp):
         self.u0.assign(u0)
         self.p0.assign(p0)
-        self.f.assign(f)
 
         # Compute tentative velocity step
         b1 = assemble(self.L1)
@@ -100,14 +98,14 @@ def run_solver():
     
     u0 = Function(V)
     p0 = Function(Q)
-    f = Function(V)
+    f = Constant((0,0))
 
     # output velocity
     ufile = File('ProjectSolver/u.pvd')
-    navier_stokes_solver = ProjectSolver(u0, p0, dt = dt, nu = mu)
+    navier_stokes_solver = ProjectSolver(u0, p0, f, dt = dt, nu = mu)
     
     for n in range(100):
-        u1, p1 = navier_stokes_solver.solve(u0, p0, f, bcu, bcp)
+        u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
         ufile << u0
