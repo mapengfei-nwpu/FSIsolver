@@ -65,8 +65,7 @@ k = Constant(dt)
 # Define evolving function of deformation gradient.
 c = 0.5
 theta = 0.5
-vnorm = sqrt(dot(u, u)) + 0.001
-stable_v_t = v_t + c*mesh.hmin()*dot(u, nabla_grad(v_t))/vnorm
+stable_v_t = v_t + c*mesh.hmin()*dot(u, nabla_grad(v_t))
 F4 = (1/dt)*inner(u_t-g, stable_v_t)*dx + theta*(inner(dot(u,nabla_grad(u_t)),stable_v_t) - inner(grad(u)*u_t,stable_v_t))*dx + (1-theta)*(inner(dot(u,nabla_grad(g)),stable_v_t)  - inner(grad(u)*g,stable_v_t))*dx
 a4 = lhs(F4)
 L4 = rhs(F4)
@@ -94,7 +93,7 @@ for n in range(n_step):
     # force function
     A0 = assemble(a0)
     b0 = assemble(L0)
-    # [bc.apply(A0, b0) for bc in bcf]
+    [bc.apply(A0, b0) for bc in bcf]
     solve(A0, f.vector(), b0, "gmres", "default")
 
     u1, p1 = navier_stokes_solver.solve(u, p, bcu, bcp)
