@@ -79,7 +79,7 @@ public:
 		solid_mesh(solid_mesh)
 	{
 		side_lengths = fluid_mesh->side_length();
-		fluid_mesh->set_bandwidth(2);
+		fluid_mesh->set_bandwidth(1);
 		
 		///
 		get_gauss_rule(solid_mesh, reference_gauss_points, weights);
@@ -290,7 +290,7 @@ public:
 	{
 		double ret = 1.0;
 		/// 如果更改h的大小，fluid_mesh的bandwidth需要重新设置。
-   		h = side_lengths[0];
+   		h = 0.5*side_lengths[0];
 		for (unsigned i = 0; i < 2; ++i)
 		{
 			double dx = p0.coordinates()[i] - p1.coordinates()[i];
