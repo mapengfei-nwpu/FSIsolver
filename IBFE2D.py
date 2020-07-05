@@ -3,11 +3,13 @@ from DeltaInterpolation import *
 from dolfin import *
 from mshr import *
 
+# Define fluid solver
+FluidSolver = ProjectSolver
+
 # Set parameter values
 n_mesh = 32
 dt = 0.125/n_mesh
 T = 10
-delta = 0.1
 nu = 0.01
 nu_s = 0.1
 
@@ -30,25 +32,25 @@ us = TrialFunction(Vs)
 vs = TestFunction(Vs)
 
 # Define boundary conditions
-noslip  = DirichletBC(V, (0, 0), "near(x[0],1) || near(x[0],0) || near(x[1],0)")
-upflow  = DirichletBC(V, (1, 0), "near(x[1],1)")
-pinpoint = DirichletBC(Q, 0, "near(x[0],0) && near(x[1],0)","pointwise")
+noslip = DirichletBC(V, (0, 0), "near(x[0],1) || near(x[0],0) || near(x[1],0)")
+upflow = DirichletBC(V, (1, 0), "near(x[1],1)")
+pinpoint = DirichletBC(Q, 0, "near(x[0],0) && near(x[1],0)", "pointwise")
 bcu = [noslip, upflow]
 bcp = [pinpoint]
 
 # Create functions for fluid
 u0 = Function(V)
 p0 = Function(Q)
-f  = Function(V)
+f = Function(V)
 
 # Create functions for solid
 velocity = Function(Vs)
 disp = Function(Vs)
 force = Function(Vs)
-disp.interpolate(Expression(("x[0]","x[1]"),degree=2))
-# Define interpolation object
+disp.interpolate(Expression(("x[0]", "x[1]"), degree=2))
 
-navier_stokes_solver = ProjectSolver(u0, p0, f, dt=dt, nu=nu)
+# Define interpolation object and fluid solver object
+navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
 IB = IBInterpolation(regular_mesh, solid_mesh, disp._cpp_object)
 
 # Define variational problem for solid
@@ -58,7 +60,7 @@ L2 = rhs(F2)
 A2 = assemble(a2)
 
 # Output Directory name
-directory = "results2D/meshsize_" + str(n_mesh) +"/nu_s_" + str(nu_s)
+directory = "results2D/meshsize_" + str(n_mesh) + "/nu_s_" + str(nu_s)
 print("output directory : ")
 # Create files for storing solution
 ufile = File(directory + "/velocity.pvd")
@@ -89,5 +91,3 @@ while t < T + DOLFIN_EPS:
     dfile << disp
     t += dt
     print(t)
-
-    
