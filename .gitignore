@@ -2,3 +2,4 @@
 *.pvd
 __pycache__
 *.pvtu
+*.zip

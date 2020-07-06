@@ -54,14 +54,15 @@ navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
 IB = IBInterpolation(regular_mesh, solid_mesh, disp._cpp_object)
 
 # Define variational problem for solid
-F2 = nu_s*inner(grad(disp), grad(vs))*dx + inner(us, vs)*dx
+F2 = nu_s*inner(grad(disp)-inv(grad(disp)).T, grad(vs))*dx + inner(us, vs)*dx
 a2 = lhs(F2)
 L2 = rhs(F2)
 A2 = assemble(a2)
 
 # Output Directory name
 directory = "results2D/meshsize_" + str(n_mesh) + "/nu_s_" + str(nu_s)
-print("output directory : ")
+print("output directory : ", directory)
+
 # Create files for storing solution
 ufile = File(directory + "/velocity.pvd")
 pfile = File(directory + "/pressure.pvd")
