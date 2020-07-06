@@ -29,6 +29,9 @@ public:
 	void solid_to_fluid(Function &fluid, Function &solid);
 
 	void evaluate_current_points(std::shared_ptr<const Function> disp);
+	void set_bandwidth(int bw){
+		bandwidth = bw;
+	}
 
 private:
 	int bandwidth = 2;
@@ -64,11 +67,23 @@ private:
 
 	/////////////////////////////////////////////
 	//  thses methods must not be modified!!  ///
-	/////////////////////////////////////////////
-	double phi(double r)
+	///////////////////////////////////////////// 
+	double phi2(double r) // 4 point IB immersed boundary method
+	{
+		double phi;
+		r = fabs(r);
+		if (r<1 && r>=0){
+			return 0.125*(3-2*r+sqrt(1+4*r-4*r*r));
+		}
+		if (r<2 && r>=1){
+			return 0.125*(5-2*r-sqrt(-7+12*r-4*r*r));
+		}
+		return 0;
+	}
+	double phi1(double r)
 	{
 		r = fabs(r);
-		if (r > 2)
+		if (r >= 2)
 			return 0;
 		else
 			return 0.25 * (1 + cos(FENICS_PI * r * 0.5));
@@ -76,10 +91,11 @@ private:
 	double delta(const double* p0, const double* p1)
 	{
 		double ret = 1.0;
+   		double h = side_lengths[0]/static_cast<double>(bandwidth);
 		for (unsigned i = 0; i < 3; ++i)
 		{
 			double dx = p0[i] - p1[i];
-			ret *= 1. / side_lengths[i] * phi(dx / side_lengths[i]);
+			ret *= 1. / h * phi2(dx / h);
 		}
 		return ret;
 	}

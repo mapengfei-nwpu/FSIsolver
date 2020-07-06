@@ -13,6 +13,7 @@ PYBIND11_MODULE(IB, m)
 		.def("solid_to_fluid", &DeltaInterpolation::solid_to_fluid)
 		.def("fluid_to_solid", &DeltaInterpolation::fluid_to_solid)
 		.def("evaluate_current_points", &DeltaInterpolation::evaluate_current_points)
+		.def("set_bandwidth", &DeltaInterpolation::set_bandwidth)
 		;
     
     py::class_<IBMesh, std::shared_ptr<IBMesh>>(m, "IBMesh")
