@@ -52,9 +52,10 @@ disp.interpolate(Expression(("x[0]", "x[1]"), degree=2))
 # Define interpolation object and fluid solver object
 navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
 IB = IBInterpolation(regular_mesh, solid_mesh, disp._cpp_object)
+IB.evaluate_current_points(disp._cpp_object)
 
 # Define variational problem for solid
-F2 = nu_s*inner(grad(disp)-inv(grad(disp)).T, grad(vs))*dx + inner(us, vs)*dx
+F2 = nu_s*inner(grad(disp), grad(vs))*dx + inner(us, vs)*dx
 a2 = lhs(F2)
 L2 = rhs(F2)
 A2 = assemble(a2)
@@ -66,8 +67,11 @@ print("output directory : ", directory)
 # Create files for storing solution
 ufile = File(directory + "/velocity.pvd")
 pfile = File(directory + "/pressure.pvd")
-dfile = File(directory + "/disp.pvd")
 ffile = File(directory + "/force.pvd")
+
+dfile = File(directory + "/disp.pvd")
+ufile2 = File(directory + "/velocity2.pvd")
+ffile2 = File(directory + "/force2.pvd")
 
 t = dt
 while t < T + DOLFIN_EPS:
@@ -86,9 +90,11 @@ while t < T + DOLFIN_EPS:
     # step 5. interpolate force from solid to fluid
     IB.solid_to_fluid(f._cpp_object, force._cpp_object)
     # step 6. update variables and save to file.
+    ufile2 << velocity
     ufile << u0
     pfile << p0
     ffile << f
+    ffile2 << force
     dfile << disp
     t += dt
     print(t)

@@ -32,7 +32,7 @@ class TaylorHoodSolver:
         b = assemble(self.L)
         [bc.apply(self.A, b) for bc in bcu]
         [bc.apply(self.A, b) for bc in bcp]
-        solve(self.A, self.w_.vector(), b)
+        solve(self.A, self.w_.vector(), b, "gmres", "hypre_amg")
 
         return self.w_.split(True)
 

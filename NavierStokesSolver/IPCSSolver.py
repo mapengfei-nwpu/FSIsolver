@@ -80,12 +80,12 @@ def run_solver():
     T = 5.0
     num_steps = 5000
     dt = T / num_steps
-    mu = 0.001
+    mu = 0.01
     # Create mesh
     channel = Rectangle(Point(0, 0), Point(2.2, 0.41))
     cylinder = Circle(Point(0.2, 0.2), 0.05)
     domain = channel - cylinder
-    mesh = generate_mesh(domain, 64)
+    mesh = generate_mesh(domain, 32)
 
     # Define function spaces
     V = VectorFunctionSpace(mesh, 'P', 2)
@@ -116,7 +116,7 @@ def run_solver():
     ufile = File('IPCSSolver/u.pvd')
     navier_stokes_solver = IPCSSolver(u0, p0, f, dt = dt, nu = mu)
     
-    for n in range(100):
+    for n in range(1000):
         u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
         u0.assign(u1)
         p0.assign(p1)
