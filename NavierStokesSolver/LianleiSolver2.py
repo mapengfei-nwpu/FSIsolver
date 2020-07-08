@@ -1,4 +1,4 @@
-# 二阶
+# 一阶
 from fenics import *
 from mshr import *
 import numpy as np
@@ -68,7 +68,7 @@ class LianleiSolver:
         # Step 1: 
         b1 = assemble(self.L1)
         [bc.apply(self.A1, b1) for bc in bcp]
-        solve(self.A1, self.p_1.vector(), b1, 'bicgstab', 'default')
+        solve(self.A1, self.p_1.vector(), b1, 'cg', 'hypre_amg')
 
         # Step 2: 
         b2 = assemble(self.L2)
@@ -87,6 +87,8 @@ class LianleiSolver:
 
         self.u_.vector()[:] = self.u_1.vector()[:] + self.u_2.vector()[:]
         self.p_.vector()[:] = self.p_1.vector()[:] + self.p_2.vector()[:]
+        print("lianlei")
+
         return self.u_, self.p_
 
 
