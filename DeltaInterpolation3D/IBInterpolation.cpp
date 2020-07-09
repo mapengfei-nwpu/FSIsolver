@@ -150,11 +150,15 @@ void DeltaInterpolation::fluid_to_solid(Function &fluid, Function &solid)
 
 void DeltaInterpolation::solid_to_fluid(Function &fluid, Function &solid)
 {
+
+	/// Set all entries to zero. 
+	fluid.vector()->zero();
+
+	/// Set MPI variables.
 	auto mpi_size = MPI::size(MPI_COMM_WORLD);
 	auto mpi_rank = MPI::rank(MPI_COMM_WORLD);
 
-	/// these are weights, gauss points, weights on local processor.
-
+	/// These are weights, gauss points, weights on local processor.
 	std::vector<double> points_send;
 	std::vector<double> values_send;
 	std::vector<double> weights_send;
