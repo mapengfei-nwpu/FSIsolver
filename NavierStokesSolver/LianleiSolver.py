@@ -3,6 +3,22 @@ from fenics import *
 from mshr import *
 import numpy as np
 
+def s_solve(C0,A0,A1,A2,B0,B1,B2,R,dt):
+    S0 = 1
+    SN = 0
+    while(abs(SN-S0)<1e-6):
+        SN = S0
+        ESN   = A0 + A1*SN + A2*SN*SN
+        ESND  = A1 + 2*A2*SN
+        SESN  = sqrt(ESN)
+        SESND = SESN/(2.0*SESN)
+
+        FSN  = 2.0/dt*(SN*SN*SN*ESN) - 2.0/dt*R*(SN*SN*SESN) + B0*SN + B1*SN*SN + B2*SN*SN*SN
+        FSND = 2.0/dt*(3.0*SN*SN*ESN + SN*SN*SN*ESND) - 2.0/dt*R*(2*SN*SESN + SN*SN*SESND) + B0 + 2.0*B1*SN + 3.0*B2*SN*SN
+
+        S0 = SN - FS/FSD
+    
+    return S0
 
 class LianleiSolver:
     def __init__(self, u0, p0, f, dt=0.01, nu=0.01):
@@ -61,7 +77,7 @@ class LianleiSolver:
         self.A3 = assemble(a3)
         self.A4 = assemble(a4)
 
-    def solve(self, u0, p0, bcu, bcp):
+    def solve(self, u0, p0, bcu, bcp, dt=0.01, nu=0.01):
         self.u_n.assign(u0)
         self.p_n.assign(p0)
 
@@ -85,8 +101,20 @@ class LianleiSolver:
         [bc.apply(self.A4, b4) for bc in self.bcu_sav]
         solve(self.A4, self.u_2.vector(), b4, 'bicgstab', 'default')
 
-        self.u_.vector()[:] = self.u_1.vector()[:] + self.u_2.vector()[:]
-        self.p_.vector()[:] = self.p_1.vector()[:] + self.p_2.vector()[:]
+        C0 = 0.1
+        A0 = assemble(0.5*inner(self.u_1, self.u_1)*dx) + C0
+        A1 = assemble(inner(self.u_1, self.u_2)*dx)
+        A2 = assemble(0.5*inner(self.u_2, self.u_2)*dx) 
+
+        B0 =     nu*assemble(inner(grad(self.u_1), grad(self.u_1))*dx) - assemble(self.f,self.u_1) # - assemble(*ds)
+        B1 = 2.0*nu*assemble(inner(grad(self.u_1), grad(self.u_2))*dx) - assemble(self.f,self.u_2)
+        B2 =     nu*assemble(inner(grad(self.u_2), grad(self.u_2))*dx)
+
+        S = s_solve(C0,A0,A1,A2,B0,B1,B2,R,dt)
+
+        self.u_.vector()[:] = self.u_1.vector()[:] + S*self.u_2.vector()[:]
+        self.p_.vector()[:] = self.p_1.vector()[:] + S*self.p_2.vector()[:]
+        
         return self.u_, self.p_
 
 
