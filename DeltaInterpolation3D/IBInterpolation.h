@@ -34,7 +34,7 @@ public:
 	}
 
 private:
-	int bandwidth = 2;
+	int bandwidth = 1;
 	std::shared_ptr<IBMesh> fluid_mesh;
 	std::shared_ptr<const Mesh> solid_mesh;
 	std::vector<double> side_lengths;
@@ -91,7 +91,7 @@ private:
 	double delta(const double* p0, const double* p1)
 	{
 		double ret = 1.0;
-   		double h = side_lengths[0]/static_cast<double>(bandwidth);
+   		double h = side_lengths[0]/2.0*static_cast<double>(bandwidth);
 		for (unsigned i = 0; i < 3; ++i)
 		{
 			double dx = p0[i] - p1[i];

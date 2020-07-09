@@ -34,9 +34,10 @@ vs = TestFunction(Vs)
 # Define boundary conditions
 noslip = DirichletBC(V, (0, 0, 0), "near(x[0],1) || near(x[0],0) || near(x[1],0)")
 upflow = DirichletBC(V, (1, 0, 0), "near(x[1],1)")
-pinpoint = DirichletBC(Q, 0, "near(x[0],0) && near(x[1],0)", "pointwise")
+pinpoint = DirichletBC(Q, 0, "near(x[0],0) && near(x[1],0) && near(x[2],0)", "pointwise")
 bcu = [noslip, upflow]
 bcp = [pinpoint]
+# bcp = []
 
 # Create functions for fluid
 u0 = Function(V)
@@ -47,13 +48,13 @@ f = Function(V)
 velocity = Function(Vs)
 disp = Function(Vs)
 force = Function(Vs)
-disp.interpolate(Expression(("x[0]", "x[1]","x[2]"), degree=2))
+disp.interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2))
 
 # Define interpolation object and fluid solver object
 navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
 IB = DeltaInterpolation(regular_mesh, solid_mesh, disp._cpp_object)
 IB.evaluate_current_points(disp._cpp_object)
-
+# -inv(grad(disp)).T
 # Define variational problem for solid
 F2 = nu_s*inner(grad(disp)-inv(grad(disp)).T, grad(vs))*dx + inner(us, vs)*dx
 a2 = lhs(F2)
@@ -86,7 +87,7 @@ while t < T + DOLFIN_EPS:
     IB.evaluate_current_points(disp._cpp_object)
     # step 4. calculate body force.
     b2 = assemble(L2)
-    solve(A2, force.vector(), b2)
+    solve(A2, force.vector(), b2, 'cg', 'sor' )
     # step 5. interpolate force from solid to fluid
     IB.solid_to_fluid(f._cpp_object, force._cpp_object)
     # step 6. update variables and save to file.
