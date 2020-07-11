@@ -6,7 +6,7 @@ import numpy as np
 FluidSolver = LianleiSolver
 # FluidSolver = IPCSSolver
 # Set parameter values
-n = 4
+n = 8
 print("mesh division: ", n)
 T = 1.0
 num_steps = n*n*2*2
@@ -14,7 +14,7 @@ dt = T / num_steps
 mu = 0.01
 mesh = RectangleMesh(Point(0, 0), Point(1, 1), n, n)
 
-solution = solutions[0]
+solution = solutions[3]
 V = VectorFunctionSpace(mesh, 'P', 2)
 Q = FunctionSpace(mesh, 'P', 1)
 

@@ -1,0 +1,89 @@
+[1mdiff --git a/NavierStokesSolver/LianleiSolver.py b/NavierStokesSolver/LianleiSolver.py[m
+[1mindex 3445a45..32c8bc0 100644[m
+[1m--- a/NavierStokesSolver/LianleiSolver.py[m
+[1m+++ b/NavierStokesSolver/LianleiSolver.py[m
+[36m@@ -3,7 +3,7 @@[m [mfrom fenics import *[m
+ from mshr import *[m
+ import numpy as np[m
+ [m
+[31m-def s_solve(C0,A0,A1,A2,B0,B1,B2,R,dt):[m
+[32m+[m[32mdef s_solve(C0,A0,A1,A2,B0,B1,B2,dt):[m
+     S0 = 1[m
+     SN = 0[m
+     while(abs(SN-S0)<1e-6):[m
+[36m@@ -11,13 +11,15 @@[m [mdef s_solve(C0,A0,A1,A2,B0,B1,B2,R,dt):[m
+         ESN   = A0 + A1*SN + A2*SN*SN[m
+         ESND  = A1 + 2*A2*SN[m
+         SESN  = sqrt(ESN)[m
+[32m+[m[32m        R = SESN[m
+         SESND = SESN/(2.0*SESN)[m
+ [m
+         FSN  = 2.0/dt*(SN*SN*SN*ESN) - 2.0/dt*R*(SN*SN*SESN) + B0*SN + B1*SN*SN + B2*SN*SN*SN[m
+         FSND = 2.0/dt*(3.0*SN*SN*ESN + SN*SN*SN*ESND) - 2.0/dt*R*(2*SN*SESN + SN*SN*SESND) + B0 + 2.0*B1*SN + 3.0*B2*SN*SN[m
+[32m+[m[32m        S0 = SN - FSN/FSND[m
+[32m+[m
+[32m+[m[32m        print(S0)[m
+ [m
+[31m-        S0 = SN - FS/FSD[m
+[31m-    [m
+     return S0[m
+ [m
+ class LianleiSolver:[m
+[36m@@ -48,19 +50,21 @@[m [mclass LianleiSolver:[m
+         self.bcp_sav = [][m
+ [m
+         # Define expressions used in variational forms[m
+[31m-        k = Constant(dt)[m
+[31m-        n = FacetNormal(mesh)[m
+[32m+[m[32m        self.f = f[m
+[32m+[m[32m        self.k = Expression("dt", degree=1, dt=dt)[m
+[32m+[m[32m        self.nu = Expression("nu", degree=1, nu=nu)[m
+[32m+[m[32m        self.n = FacetNormal(mesh)[m
+ [m
+[31m-        F1 = -inner(grad(p), grad(q))*dx + inner(f + self.u_n/k, grad(q)) * \[m
+[31m-            dx - 1/k*inner(n, self.u_n)*q*ds[m
+[32m+[m[32m        # TODO : F1 缺少一项边界项[m
+[32m+[m[32m        F1 = -inner(grad(p), grad(q))*dx + inner(f + self.u_n/self.k, grad(q)) * dx - 1/self.k*inner(n, self.u_n)*q*ds[m
+ [m
+         F2 = -inner(grad(p), grad(q))*dx - inner(grad(self.u_n)*self.u_n, grad(q))*dx[m
+ [m
+[31m-        F3 = 1/k/nu*inner(u, v)*dx + inner(grad(u), grad(v)) * dx \[m
+[31m-             - 1/nu*inner(f+self.u_n/k-grad(self.p_1), v)*dx[m
+[32m+[m[32m        F3 = 1/self.k/self.nu*inner(u, v)*dx + inner(grad(u), grad(v)) * dx \[m
+[32m+[m[32m             - 1/self.nu*inner(f+self.u_n/self.k-grad(self.p_1), v)*dx[m
+ [m
+[31m-        F4 = 1/k/nu*inner(u, v)*dx + inner(grad(u), grad(v)) * dx \[m
+[31m-             + 1/nu*inner(grad(self.u_n)*self.u_n+grad(self.p_2), v)*dx[m
+[32m+[m[32m        F4 = 1/self.k/self.nu*inner(u, v)*dx + inner(grad(u), grad(v)) * dx \[m
+[32m+[m[32m             + 1/self.nu*inner(grad(self.u_n)*self.u_n+grad(self.p_2), v)*dx[m
+ [m
+         a1 = lhs(F1)[m
+         a2 = lhs(F2)[m
+[36m@@ -78,8 +82,12 @@[m [mclass LianleiSolver:[m
+         self.A4 = assemble(a4)[m
+ [m
+     def solve(self, u0, p0, bcu, bcp, dt=0.01, nu=0.01):[m
+[32m+[m
+[32m+[m[32m        # Update variables.[m
+         self.u_n.assign(u0)[m
+         self.p_n.assign(p0)[m
+[32m+[m[32m        self.k.dt = dt[m
+[32m+[m[32m        self.nu.nu = nu[m
+ [m
+         # Step 1: [m
+         b1 = assemble(self.L1)[m
+[36m@@ -106,11 +114,11 @@[m [mclass LianleiSolver:[m
+         A1 = assemble(inner(self.u_1, self.u_2)*dx)[m
+         A2 = assemble(0.5*inner(self.u_2, self.u_2)*dx) [m
+ [m
+[31m-        B0 =     nu*assemble(inner(grad(self.u_1), grad(self.u_1))*dx) - assemble(self.f,self.u_1) # - assemble(*ds)[m
+[31m-        B1 = 2.0*nu*assemble(inner(grad(self.u_1), grad(self.u_2))*dx) - assemble(self.f,self.u_2)[m
+[32m+[m[32m        B0 =     nu*assemble(inner(grad(self.u_1), grad(self.u_1))*dx) - assemble(inner(self.f,self.u_1)) # - assemble(*ds)[m
+[32m+[m[32m        B1 = 2.0*nu*assemble(inner(grad(self.u_1), grad(self.u_2))*dx) - assemble(inner(self.f,self.u_2))[m
+         B2 =     nu*assemble(inner(grad(self.u_2), grad(self.u_2))*dx)[m
+ [m
+[31m-        S = s_solve(C0,A0,A1,A2,B0,B1,B2,R,dt)[m
+[32m+[m[32m        S = s_solve(C0,A0,A1,A2,B0,B1,B2,dt)[m
+ [m
+         self.u_.vector()[:] = self.u_1.vector()[:] + S*self.u_2.vector()[:][m
+         self.p_.vector()[:] = self.p_1.vector()[:] + S*self.p_2.vector()[:][m
