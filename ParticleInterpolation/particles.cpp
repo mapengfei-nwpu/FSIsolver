@@ -17,19 +17,6 @@ const float radius = 0.3;
 
 using namespace dolfin;
 
-void data_generate(std::vector<float> &pos_new)
-{
-    // lambda function of random.
-    srand(static_cast<uint>(time(0)));
-    auto rrr = [] { return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX); };
-
-    // random positions.
-    for (size_t i = 0; i < pos_new.size(); i++)
-    {
-        pos_new[i] = rrr() * 0.3;
-    }
-}
-
 class Source : public Expression
 {
 public:
@@ -37,8 +24,8 @@ public:
 
     void eval(Array<double> &values, const Array<double> &x) const
     {
-        values[0] = x[0];
-        values[1] = x[1];
+        values[0] = 3;
+        values[1] = 3;
         values[2] = 3.0;
     }
 };
@@ -123,38 +110,53 @@ void get_gauss_rule(
             values_weights.push_back(static_cast<float>(weight));
         }
     }
+    assert(values_weights.size()*3==coordinates.size()*4);
 }
 
+// type conversion between std::vector<double> and std::vector<float>.
+template<typename T1, typename T2>
+void vectorTypeConvert(const std::vector<T1> &from, std::vector<T2> &to){
+    to.resize(from.size());
+    for (size_t i = 0; i < from.size(); i++)
+    {
+        to[i] = static_cast<T2>(from[i]);
+    }
+}
 
 int main()
 {
-    auto mesh = std::make_shared<Mesh>(BoxMesh(Point(-2, -3, -2), Point(2, 2, 2), 30, 30, 30));
+    auto mesh = std::make_shared<Mesh>(BoxMesh(Point(-1, -1, -1), Point(1, 1, 1), 30, 30, 30));
     const auto coord = mesh->coordinates();
     Point min, max;
     find_min_max_points(coord, min, max);
-    std::cout << "min" << min << std::endl;
-    std::cout << "max" << max << std::endl;
-    std::cout << "size" << coord.size() / 3 << std::endl;
 
     // calculate values and weights
     std::vector<float> pos_old;
     std::vector<float> val_old;
-    std::vector<float> pos_new;
-    std::vector<float> val_new;
 
     // generate points and values on mesh.
     auto f = generate_function(mesh);
-
     get_gauss_rule(f,pos_old,val_old);
 
     // generate random points
-    pos_new.resize(3 * num_new);
-    val_new.resize(3 * num_new);
-    data_generate(pos_new);
+    auto mesh_new = std::make_shared<Mesh>(BoxMesh(Point(-2, -2, -2), Point(2, 2, 2), 30, 30, 30));
+    auto g = generate_function(mesh_new);
+    auto dof_coordinates = g->function_space()->tabulate_dof_coordinates();
 
-    assert(pos_old.size() * 4 == val_old.size() * 3);
-    assert(pos_new.size() == val_new.size());
+    // generate points and values on mesh_new.
+    std::vector<float> pos_new;
+    std::vector<float> val_new;
+    pos_new.resize(dof_coordinates.size()/3);
+    for (size_t i = 0; i < dof_coordinates.size()/9; i++)
+    {
+        pos_new[3*i]   = static_cast<float>(dof_coordinates[9*i]);
+        pos_new[3*i+1] = static_cast<float>(dof_coordinates[9*i+1]);
+        pos_new[3*i+2] = static_cast<float>(dof_coordinates[9*i+2]);
+    }
+    val_new.resize(pos_new.size());
 
+
+    // time the interpolation
     auto start = std::chrono::system_clock::now();
 
     /// use the particle system for delta interpolation.
@@ -174,10 +176,25 @@ int main()
     /// print the results.
     for (size_t i = 0; i < pos_new.size() / 3; i++)
     {
-        printf("pos: %f, %f, %f\n", pos_new[3 * i], pos_new[3 * i + 1], pos_new[3 * i + 2]);
-        printf("val: %f, %f, %f\n", val_new[3 * i], val_new[3 * i + 1], val_new[3 * i + 2]);
+       // printf("pos: %f, %f, %f\n", pos_new[3 * i], pos_new[3 * i + 1], pos_new[3 * i + 2]);
+       // printf("val: %f, %f, %f\n", val_new[3 * i], val_new[3 * i + 1], val_new[3 * i + 2]);
     }
 
-    // here, val_new have been rewritten.
+    std::vector<double> val_new_double;
+    vectorTypeConvert(val_new,val_new_double);
+
+    
+    std::cout<<"g->vector()->size(): "<<g->vector()->size()<<std::endl;
+    std::cout<<"val_new.size(): "<<val_new.size()<<std::endl;
+    std::cout<<"val_new_double.size(): "<<val_new_double.size()<<std::endl;
+    g->vector()->set_local(val_new_double);
+
+
+    File file("g.pvd");
+    file << *g;
+
+
+    
+    
     return 0;
 }
