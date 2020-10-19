@@ -9,9 +9,10 @@
 #include <dolfin.h>
 #include <dolfin/geometry/SimplexQuadrature.h>
 
+#include "TetPoisson.h"
 #include "particleSystem.h"
 
-const uint num_new = 12582912;
+const uint num_new = 100;
 const float radius = 0.3;
 
 using namespace dolfin;
@@ -27,6 +28,28 @@ void data_generate(std::vector<float> &pos_new)
     {
         pos_new[i] = rrr() * 0.3;
     }
+}
+
+class Source : public Expression
+{
+public:
+    Source() : Expression(3) {}
+
+    void eval(Array<double> &values, const Array<double> &x) const
+    {
+        values[0] = x[0];
+        values[1] = x[1];
+        values[2] = 3.0;
+    }
+};
+
+std::shared_ptr<Function> generate_function(std::shared_ptr<const Mesh> mesh){
+    // Create function space
+    auto V = std::make_shared<TetPoisson::FunctionSpace>(mesh);
+    auto f = std::make_shared<Function>(V);
+    auto s = std::make_shared<Source>();
+    f->interpolate(*s);
+    return f;
 }
 
 void find_min_max_points(const std::vector<double> &coord, Point &min, Point &max)
@@ -55,15 +78,16 @@ void find_min_max_points(const std::vector<double> &coord, Point &min, Point &ma
 }
 
 void get_gauss_rule(
-    std::shared_ptr<const Mesh> mesh,
-    std::vector<double> &coordinates,
-    std::vector<double> &weights)
+    std::shared_ptr<const Function> function,
+    std::vector<float> &coordinates,
+    std::vector<float> &values_weights)
 {
     auto order = 1;
+    auto mesh = function->function_space()->mesh();
     auto dim = mesh->topology().dim();
 
     // Construct Gauss quadrature rule
-    SimplexQuadrature gq(dim, order);
+    SimplexQuadrature gauss_quadrature(dim, order);
 
     for (CellIterator cell(*mesh); !cell.end(); ++cell)
     {
@@ -72,48 +96,39 @@ void get_gauss_rule(
         cell->get_cell_data(ufc_cell);
 
         // Compute quadrature rule for the cell.
-        auto qr = gq.compute_quadrature_rule(*cell);
-        dolfin_assert(qr.second.size() == qr.first.size() / 3);
-        /// std::cout << qr.first.size() << std::endl;
-        for (size_t i = 0; i < qr.second.size(); i++)
+        auto quadrature_rule = gauss_quadrature.compute_quadrature_rule(*cell);
+        assert(quadrature_rule.second.size() == quadrature_rule.first.size() / 3);
+
+        // compute function values at quafrature points.
+        for (size_t i = 0; i < quadrature_rule.second.size(); i++)
         {
-            /// push back what we get.
-            weights.push_back(qr.second[i]);
-            for (size_t d = 0; d < dim; d++)
-            {
-                coordinates.push_back(qr.first[3 * i + d]);
-            }
+            // shortcut of gauss point and weight.
+            auto point = &(quadrature_rule.first[3 * i]);
+            auto weight = quadrature_rule.second[i];
+
+		    // Call evaluate function
+            Array<double> x(3, point);
+		    Array<double> v(3);
+		    function->eval(v, x, *cell, ufc_cell);
+
+            // push back gauss point.
+            coordinates.push_back(static_cast<float>(point[0]));
+            coordinates.push_back(static_cast<float>(point[1]));
+            coordinates.push_back(static_cast<float>(point[2]));
+
+            // Push back values and weights
+		    values_weights.push_back(static_cast<float>(v[0]));
+		    values_weights.push_back(static_cast<float>(v[1]));
+		    values_weights.push_back(static_cast<float>(v[2]));
+            values_weights.push_back(static_cast<float>(weight));
         }
     }
 }
 
-void fun(std::shared_ptr<const Mesh> mesh, std::vector<float> &pos_old, std::vector<float> &val_old)
-{
-    std::vector<double> coordinates;
-    std::vector<double> weights;
-    get_gauss_rule(mesh, coordinates, weights);
-    pos_old.resize(3 * weights.size());
-    val_old.resize(4 * weights.size());
-    for (size_t i = 0; i < weights.size(); i++)
-    {
-        float x = static_cast<float>(coordinates[3 * i]);
-        float y = static_cast<float>(coordinates[3 * i + 1]);
-        float z = static_cast<float>(coordinates[3 * i + 2]);
-
-        pos_old[3 * i] = x;
-        pos_old[3 * i + 1] = y;
-        pos_old[3 * i + 2] = z;
-
-        val_old[4 * i] = 2.0;
-        val_old[4 * i + 1] = 3.0;
-        val_old[4 * i + 2] = 4 * y;
-        val_old[4 * i + 3] = weights[i];
-    }
-}
 
 int main()
 {
-    auto mesh = std::make_shared<Mesh>(BoxMesh(Point(-2, -3, -2), Point(2, 2, 2), 128, 128, 128));
+    auto mesh = std::make_shared<Mesh>(BoxMesh(Point(-2, -3, -2), Point(2, 2, 2), 30, 30, 30));
     const auto coord = mesh->coordinates();
     Point min, max;
     find_min_max_points(coord, min, max);
@@ -128,7 +143,9 @@ int main()
     std::vector<float> val_new;
 
     // generate points and values on mesh.
-    fun(mesh, pos_old, val_old);
+    auto f = generate_function(mesh);
+
+    get_gauss_rule(f,pos_old,val_old);
 
     // generate random points
     pos_new.resize(3 * num_new);
@@ -157,10 +174,9 @@ int main()
     /// print the results.
     for (size_t i = 0; i < pos_new.size() / 3; i++)
     {
-        //printf("pos: %f, %f, %f\n", pos_new[3 * i], pos_new[3 * i + 1], pos_new[3 * i + 2]);
-        //printf("val: %f, %f, %f\n", val_new[3 * i], val_new[3 * i + 1], val_new[3 * i + 2]);
+        printf("pos: %f, %f, %f\n", pos_new[3 * i], pos_new[3 * i + 1], pos_new[3 * i + 2]);
+        printf("val: %f, %f, %f\n", val_new[3 * i], val_new[3 * i + 1], val_new[3 * i + 2]);
     }
-    std::cout << "particles size:" << val_old.size() << std::endl;
 
     // here, val_new have been rewritten.
     return 0;
