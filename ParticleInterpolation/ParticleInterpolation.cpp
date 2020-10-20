@@ -58,7 +58,9 @@ void find_min_max_points(
 }
 
 void get_gauss_rule(
+    bool isSolid,
     std::shared_ptr<const Function> function,
+    std::shared_ptr<const Function> displacement,
     std::vector<float> &coordinates,
     std::vector<float> &values_weights)
 {
@@ -80,27 +82,58 @@ void get_gauss_rule(
         assert(quadrature_rule.second.size() == quadrature_rule.first.size() / 3);
 
         // compute function values at quafrature points.
-        for (size_t i = 0; i < quadrature_rule.second.size(); i++)
+        if (isSolid)
         {
-            // shortcut of gauss point and weight.
-            auto point = &(quadrature_rule.first[3 * i]);
-            auto weight = quadrature_rule.second[i];
+            for (size_t i = 0; i < quadrature_rule.second.size(); i++)
+            {
+                // shortcut of gauss point and weight.
+                auto point = &(quadrature_rule.first[3 * i]);
+                auto weight = quadrature_rule.second[i];
 
-            // Call evaluate function
-            Array<double> x(3, point);
-            Array<double> v(3);
-            function->eval(v, x, *cell, ufc_cell);
+                // Call evaluate function
+                Array<double> x(3, point);
+                Array<double> v(3);
+                Array<double> u(3);
+                function->eval(v, x, *cell, ufc_cell);
+                displacement->eval(u, x, *cell, ufc_cell);
 
-            // push back gauss point.
-            coordinates.push_back(static_cast<float>(point[0]));
-            coordinates.push_back(static_cast<float>(point[1]));
-            coordinates.push_back(static_cast<float>(point[2]));
 
-            // Push back values and weights
-            values_weights.push_back(static_cast<float>(v[0]));
-            values_weights.push_back(static_cast<float>(v[1]));
-            values_weights.push_back(static_cast<float>(v[2]));
-            values_weights.push_back(static_cast<float>(weight));
+                // push back gauss point.
+                coordinates.push_back(static_cast<float>(u[0]));
+                coordinates.push_back(static_cast<float>(u[1]));
+                coordinates.push_back(static_cast<float>(u[2]));
+
+                // Push back values and weights
+                values_weights.push_back(static_cast<float>(v[0]));
+                values_weights.push_back(static_cast<float>(v[1]));
+                values_weights.push_back(static_cast<float>(v[2]));
+                values_weights.push_back(static_cast<float>(weight));
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < quadrature_rule.second.size(); i++)
+            {
+                // shortcut of gauss point and weight.
+                auto point = &(quadrature_rule.first[3 * i]);
+                auto weight = quadrature_rule.second[i];
+
+                // Call evaluate function
+                Array<double> x(3, point);
+                Array<double> v(3);
+                function->eval(v, x, *cell, ufc_cell);
+
+                // push back gauss point.
+                coordinates.push_back(static_cast<float>(point[0]));
+                coordinates.push_back(static_cast<float>(point[1]));
+                coordinates.push_back(static_cast<float>(point[2]));
+
+                // Push back values and weights
+                values_weights.push_back(static_cast<float>(v[0]));
+                values_weights.push_back(static_cast<float>(v[1]));
+                values_weights.push_back(static_cast<float>(v[2]));
+                values_weights.push_back(static_cast<float>(weight));
+            }
         }
     }
     assert(values_weights.size() * 3 == coordinates.size() * 4);
@@ -117,36 +150,53 @@ void vectorTypeConvert(const std::vector<T1> &from, std::vector<T2> &to)
     }
 }
 
-void interpolate(std::shared_ptr<const Function> f, std::shared_ptr<Function> g, float input_radius, int input_order)
+void interpolate(std::shared_ptr<const Function> f, // interpolation function
+                 std::shared_ptr<const Function> d, // displacement function
+                 std::shared_ptr<Function> g,       // unkown function
+                 float input_radius,                // radius of cell
+                 int input_order,                   // order of gauss quadrature
+                 bool isSolid)                      // are f and d functions on solid?
 {
     radius = input_radius;
     quadrature_order = input_order;
 
-    // generate points and values on mesh.
+    // generate points and values on mesh.    
+    // find the minum point and maximun point.
     // TODO: using mesh coordinates is easier.
+    Point min, max;
     const auto coord_f = f->function_space()->tabulate_dof_coordinates();
     const auto coord_g = g->function_space()->tabulate_dof_coordinates();
-
-    // find the minum point and maximun point.
-    Point min, max;
     find_min_max_points(coord_f, coord_g, min, max);
 
-    // calculate positions, values, weights
+    // calculate positions, values, weights(if isSolid is true,
+    // f and d are on the solid and the pos_new will be evaluated on d)
     std::vector<float> pos_old;
     std::vector<float> val_old;
-    get_gauss_rule(f, pos_old, val_old);
+    get_gauss_rule(isSolid, f, d, pos_old, val_old);
 
     // generate pos_new on mesh_new and allocate memory for val_new.
+    // (if isSolid is true, f and d are solid and g is on solid, pos_old
+    // should be evaluated with instead)
     std::vector<float> pos_new;
     std::vector<float> val_new;
-    pos_new.resize(coord_g.size() / 3);
-    for (size_t i = 0; i < coord_g.size() / 9; i++)
+    if (isSolid)
     {
-        pos_new[3 * i] = static_cast<float>(coord_g[9 * i]);
-        pos_new[3 * i + 1] = static_cast<float>(coord_g[9 * i + 1]);
-        pos_new[3 * i + 2] = static_cast<float>(coord_g[9 * i + 2]);
+        pos_new.resize(coord_g.size() / 3);
+        for (size_t i = 0; i < coord_g.size() / 9; i++)
+        {
+            pos_new[3 * i] = static_cast<float>(coord_g[9 * i]);
+            pos_new[3 * i + 1] = static_cast<float>(coord_g[9 * i + 1]);
+            pos_new[3 * i + 2] = static_cast<float>(coord_g[9 * i + 2]);
+        }
+        val_new.resize(pos_new.size());
     }
-    val_new.resize(pos_new.size());
+    else
+    {
+        std::vector<double> temp_pos_new;
+        d->vector()->get_local(temp_pos_new);
+        vectorTypeConvert(temp_pos_new,pos_new);
+        val_new.resize(pos_new.size());
+    }
 
     // use the particle system for delta interpolation.
     ParticleSystem particle_system(pos_old.size() / 3, radius, min[0], min[1], min[2], max[0] - min[0], max[1] - min[1], max[2] - min[2]);
