@@ -1,7 +1,7 @@
 
 from fenics import *
 from mshr import *
-import IB
+import ParticleInterpolationPybind
 
 # 测试一个例子
 # 注意points中两个点的顺序，x,y坐标必须从小到大。
@@ -19,11 +19,11 @@ disp.interpolate(disp_expression)
 
 uf = interpolate(Expression(("x[0]","x[1]","x[2]"),degree=2), Vf)
 us = Function(Vs)
-IB.interpolate(uf._cpp_object, disp._cpp_object, us._cpp_object, fluid_mesh.hmax(), 1, False)
+ParticleInterpolationPybind.interpolate(uf._cpp_object, disp._cpp_object, us._cpp_object, fluid_mesh.hmax(), 1, False)
 File("us.pvd") << us
 
 uf = Function(Vf)
 us = interpolate(Expression(("1","2","3"),degree=2), Vs)
-IB.interpolate(us._cpp_object, disp._cpp_object, uf._cpp_object, fluid_mesh.hmax(), 4, True)
+ParticleInterpolationPybind.interpolate(us._cpp_object, disp._cpp_object, uf._cpp_object, fluid_mesh.hmax(), 4, True)
 File("uf.pvd") << uf
 

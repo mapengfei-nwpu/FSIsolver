@@ -11,7 +11,7 @@ include(${DOLFIN_USE_FILE})
 add_definitions("-O3")
 # Target libraries
 # Add pybin11 module
-pybind11_add_module(IB SHARED ParticleInterpolation.cpp)
+pybind11_add_module(ParticleInterpolationPybind SHARED ParticleInterpolation.cpp)
 
 # MESSAGE(STATUS "This is SOURCE dir " ${test_function_SOURCE_DIR})
-target_link_libraries(IB PRIVATE dolfin  ${test_function_SOURCE_DIR}/libparticles.so)
+target_link_libraries(ParticleInterpolationPybind PRIVATE dolfin  ${test_function_SOURCE_DIR}/libparticles.so)

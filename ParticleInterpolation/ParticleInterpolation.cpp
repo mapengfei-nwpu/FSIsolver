@@ -209,7 +209,7 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
     g->vector()->set_local(val_new_double);
 }
 
-PYBIND11_MODULE(IB, m)
+PYBIND11_MODULE(ParticleInterpolationPybind, m)
 {
     m.def("interpolate", &interpolate, "A function which adds two numbers");
 }
