@@ -7,7 +7,7 @@ from IB import *
 # 测试一个例子
 # 注意points中两个点的顺序，x,y坐标必须从小到大。
 points = [Point(0, 0, 0), Point(1, 1, 1)]
-seperations = [64, 64, 64]
+seperations = [32, 32, 32]
 
 regular_mesh = IBMesh(points, seperations)
 fluid_mesh = regular_mesh.mesh()
@@ -35,8 +35,17 @@ File("us.pvd") << us
 uf = Function(Vf)
 us = interpolate(Expression(("1","2","3"),degree=2), Vs)
 
+####################################################################
+# 统计从固体到流体所需要的时间
+####################################################################
+import time
+time_start=time.time()
 IB.solid_to_fluid(uf._cpp_object,us._cpp_object)
-IB.solid_to_fluid(uf._cpp_object,us._cpp_object)
+time_end=time.time()
+print('time cost',time_end-time_start,'s')
 
+
+####################################################################
+# 输出计算结果
+####################################################################
 File("uf.pvd") << uf
-print(assemble(uf[0]*dx))
