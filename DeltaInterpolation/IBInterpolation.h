@@ -1,6 +1,7 @@
 #include <dolfin.h>
 #include <dolfin/geometry/SimplexQuadrature.h>
 #include <numeric>
+#include <chrono>
 #include "IBMesh.h"
 using namespace dolfin;
 
@@ -39,6 +40,7 @@ void get_gauss_rule(
 	{
 		// Compute quadrature rule for the cell.
 		auto qr = gq.compute_quadrature_rule(*cell);
+		std::cout<<qr.second.size()<<std::endl;
 		dolfin_assert(qr.second.size() == qr.first.size() / 2);
 		for (size_t i = 0; i < qr.second.size(); i++)
 		{
@@ -100,6 +102,7 @@ public:
 	{
 		/// TODO : the size of reference and current points
 		///        should be the same.
+		std::clock_t start = std::clock();
 		for(size_t i=0; i < current_gauss_points.size()/2; ++i)
 		{
 			Array<double> x(2);
@@ -120,15 +123,20 @@ public:
 			current_dof_points[i*2] = v[0];
 			current_dof_points[i*2+1] = v[1];
 		}
+		std::clock_t end = std::clock();
+    	std::cout << "interpolation time 2 ：" << (double)(end - start) / CLOCKS_PER_SEC << " second" << std::endl;
 	}
 
 	/// Assign the solid displacement with the velocity of fluid.
 	void fluid_to_solid(Function &fluid, Function &solid)
 	{
 		/// calculate global dof coordinates and dofs.
+		std::clock_t start = std::clock();
 		std::vector<double> values(current_dof_points.size());
 		fluid_to_solid_raw(fluid, values, current_dof_points);
 		solid.vector()->set_local(values);
+		std::clock_t end = std::clock();
+    	std::cout << "interpolation time 0 ：" << (double)(end - start) / CLOCKS_PER_SEC << " second" << std::endl;
 	}
 
 	void fluid_to_solid_raw(const Function &fluid, 
@@ -156,6 +164,7 @@ public:
 	{
 		/// calculate global dof coordinates and dofs of solid.
 		std::vector<double> solid_values;
+		std::clock_t start = std::clock();
 		for (size_t i = 0; i < reference_gauss_points.size()/2; ++i){
 			Array<double> x(2);
 			Array<double> v(2);
@@ -165,8 +174,14 @@ public:
 			solid_values.push_back(v[0]);
 			solid_values.push_back(v[1]);
 		}
-		auto fluid_values = solid_to_fluid_raw(fluid, solid_values, current_gauss_points, weights);
+		std::clock_t end = std::clock();
+    	std::cout << "interpolation time 1 ：" << (double)(end - start) / CLOCKS_PER_SEC << " second" << std::endl;
 
+		start = std::clock();
+		auto fluid_values = solid_to_fluid_raw(fluid, solid_values, current_gauss_points, weights);
+		end = std::clock();
+    	std::cout << "delta distribution time ：" << (double)(end - start) / CLOCKS_PER_SEC << " second" << std::endl;
+		
 		/// assemble fluid_values into a function.
 		auto local_size = fluid.vector()->local_size();
 		auto offset = fluid.vector()->local_range().first;

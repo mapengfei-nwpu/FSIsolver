@@ -74,19 +74,26 @@ ufile2 = File(directory + "/velocity2.pvd")
 ffile2 = File(directory + "/force2.pvd")
 
 t = dt
+import time
 while t < T + DOLFIN_EPS:
     # step 1. calculate velocity and pressure
+    time_start=time.time()
     u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
     u0.assign(u1)
     p0.assign(p1)
+    time_end=time.time()
+    print('fluid solver : ',time_end-time_start,' second')
     # step 2. interpolate velocity from fluid to solid
     IB.fluid_to_solid(u0._cpp_object, velocity._cpp_object)
     # step 3. calculate disp for solid and update current gauss points and dof points
     disp.vector()[:] = velocity.vector()[:]*dt + disp.vector()[:]
     IB.evaluate_current_points(disp._cpp_object)
     # step 4. calculate body force.
+    time_start=time.time()
     b2 = assemble(L2)
     solve(A2, force.vector(), b2)
+    time_end=time.time()
+    print('solid solver : ',time_end-time_start,' second')
     # step 5. interpolate force from solid to fluid
     IB.solid_to_fluid(f._cpp_object, force._cpp_object)
     # step 6. update variables and save to file.
