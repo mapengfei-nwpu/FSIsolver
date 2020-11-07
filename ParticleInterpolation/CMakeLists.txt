@@ -14,4 +14,4 @@ add_definitions("-O3")
 pybind11_add_module(ParticleInterpolationPybind SHARED ParticleInterpolation.cpp)
 
 # MESSAGE(STATUS "This is SOURCE dir " ${test_function_SOURCE_DIR})
-target_link_libraries(ParticleInterpolationPybind PRIVATE dolfin  ${test_function_SOURCE_DIR}/libparticles.so)
+target_link_libraries(ParticleInterpolationPybind PRIVATE dolfin  ${test_function_SOURCE_DIR}/libparticles.so ${test_function_SOURCE_DIR}/libPolynomialInterpolation.so)

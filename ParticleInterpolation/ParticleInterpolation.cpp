@@ -13,6 +13,7 @@ namespace py = pybind11;
 
 #include "TetPoisson.h"
 #include "particleSystem.h"
+#include "PolynomialInterpolation.h"
 
 float radius;
 size_t quadrature_order;
@@ -56,17 +57,27 @@ void find_min_max_points(
     max[1] = max_y;
     max[2] = max_z;
 }
-
-void get_gauss_rule(
-    bool isSolid,
+void evaluation_at_gauss_points(
     std::shared_ptr<const Function> function,
-    std::shared_ptr<const Function> displacement,
-    std::vector<float> &coordinates,
-    std::vector<float> &values_weights)
+    std::vector<double> &points_out,
+    std::vector<double> &values_out,
+    std::vector<double> &weights_out,
+    size_t order = 3)
 {
-    auto order = quadrature_order;
-    auto mesh = function->function_space()->mesh();
-    auto dim = mesh->topology().dim();
+    // Smart shortcut
+    auto mesh    = function->function_space()->mesh();
+    auto dim     = mesh->topology().dim();
+    auto element = function->function_space()->element();
+    auto dofmap  = function->function_space()->dofmap();
+
+    // Local variables, deleted at the end of the function
+	std::vector<double> coordinates;
+    std::vector<double> function_dofs;
+
+    // assert for input valuables
+    assert(values_out.size()==0);
+    assert(points_out.size()==0);    
+    assert(weights_out.size()==0);
 
     // Construct Gauss quadrature rule
     SimplexQuadrature gauss_quadrature(dim, order);
@@ -78,62 +89,76 @@ void get_gauss_rule(
         cell->get_cell_data(ufc_cell);
 
         // Compute quadrature rule for the cell.
+        // push back gauss points and gauss weights.
         auto quadrature_rule = gauss_quadrature.compute_quadrature_rule(*cell);
-        assert(quadrature_rule.second.size() == quadrature_rule.first.size() / 3);
 
-        // compute function values at quafrature points.
-        if (isSolid)
-        {
-            for (size_t i = 0; i < quadrature_rule.second.size(); i++)
-            {
-                // shortcut of gauss point and weight.
-                auto point = &(quadrature_rule.first[3 * i]);
-                auto weight = quadrature_rule.second[i];
+        points_out.insert(points_out.end(),quadrature_rule.first.begin(),quadrature_rule.first.end());
+        weights_out.insert(weights_out.end(),quadrature_rule.second.begin(),quadrature_rule.second.end());
+        
+        // push back function dofs on the cell.
+        auto dofs = dofmap->cell_dofs(cell->index());
+        std::vector<double> cell_function_dofs(dofs.size());
+        function->vector()->get(cell_function_dofs.data(), dofs.size(), dofs.data());
+        function_dofs.insert(function_dofs.end(),cell_function_dofs.begin(),cell_function_dofs.end());
 
-                // Call evaluate function
-                Array<double> x(3, point);
-                Array<double> v(3);
-                Array<double> u(3);
-                function->eval(v, x, *cell, ufc_cell);
-                displacement->eval(u, x, *cell, ufc_cell);
+        // push back cell coordinates.
+        std::vector<double> cell_coordinates;
+        cell->get_vertex_coordinates(cell_coordinates);
+        coordinates.insert(coordinates.end(),cell_coordinates.begin(),cell_coordinates.end());
+    }
 
+    size_t value_size = function->value_size();
+    size_t num_cells  = mesh->num_cells();
+    size_t num_gauss  = weights_out.size()/num_cells;
+    size_t num_dofs   = function_dofs.size()/num_cells;
+    values_out.resize(points_out.size()/dim*value_size);
 
-                // push back gauss point.
-                coordinates.push_back(static_cast<float>(u[0]));
-                coordinates.push_back(static_cast<float>(u[1]));
-                coordinates.push_back(static_cast<float>(u[2]));
+    PolynomialInterpolation pli;
+    pli.evaluate_function(num_cells,num_gauss,value_size,num_dofs,coordinates.data(),
+                          function_dofs.data(),points_out.data(),values_out.data());
+}
 
-                // Push back values and weights
-                values_weights.push_back(static_cast<float>(v[0]));
-                values_weights.push_back(static_cast<float>(v[1]));
-                values_weights.push_back(static_cast<float>(v[2]));
-                values_weights.push_back(static_cast<float>(weight));
-            }
+void get_gauss_rule(
+    bool isSolid,
+    std::shared_ptr<const Function> function,
+    std::shared_ptr<const Function> displacement,
+    std::vector<float> &coordinates,
+    std::vector<float> &values_weights)
+{
+    assert(coordinates.size()==0);
+    assert(values_weights.size()==0);
+    if(isSolid){
+        assert(function->function_space()==displacement->function_space());
+        std::vector<double> points;
+        std::vector<double> weights;
+        std::vector<double> values_function;
+        std::vector<double> values_displace;
+        evaluation_at_gauss_points(function, points, values_function, weights);
+        weights.resize(0);
+        points.resize(0);
+        evaluation_at_gauss_points(displacement, points, values_displace, weights);
+        for(size_t i = 0; i<weights.size(); i++){
+            coordinates.push_back(static_cast<float>(values_displace[3*i+0]));
+            coordinates.push_back(static_cast<float>(values_displace[3*i+1]));
+            coordinates.push_back(static_cast<float>(values_displace[3*i+2]));
+            values_weights.push_back(static_cast<float>(values_function[3*i+0]));
+            values_weights.push_back(static_cast<float>(values_function[3*i+1]));
+            values_weights.push_back(static_cast<float>(values_function[3*i+2]));
+            values_weights.push_back(static_cast<float>(weights[i]));
         }
-        else
-        {
-            for (size_t i = 0; i < quadrature_rule.second.size(); i++)
-            {
-                // shortcut of gauss point and weight.
-                auto point = &(quadrature_rule.first[3 * i]);
-                auto weight = quadrature_rule.second[i];
-
-                // Call evaluate function
-                Array<double> x(3, point);
-                Array<double> v(3);
-                function->eval(v, x, *cell, ufc_cell);
-
-                // push back gauss point.
-                coordinates.push_back(static_cast<float>(point[0]));
-                coordinates.push_back(static_cast<float>(point[1]));
-                coordinates.push_back(static_cast<float>(point[2]));
-
-                // Push back values and weights
-                values_weights.push_back(static_cast<float>(v[0]));
-                values_weights.push_back(static_cast<float>(v[1]));
-                values_weights.push_back(static_cast<float>(v[2]));
-                values_weights.push_back(static_cast<float>(weight));
-            }
+    } else {
+        std::vector<double> points;
+        std::vector<double> weights;
+        std::vector<double> values;
+        evaluation_at_gauss_points(function, points, values, weights);
+        for(size_t i = 0; i<weights.size(); i++){
+            coordinates.push_back(static_cast<float>(points[3*i+0]));
+            coordinates.push_back(static_cast<float>(points[3*i+1]));
+            coordinates.push_back(static_cast<float>(points[3*i+2]));
+            values_weights.push_back(static_cast<float>(values[3*i+0]));
+            values_weights.push_back(static_cast<float>(values[3*i+1]));
+            values_weights.push_back(static_cast<float>(values[3*i+2]));
+            values_weights.push_back(static_cast<float>(weights[i]));
         }
     }
     assert(values_weights.size() * 3 == coordinates.size() * 4);
