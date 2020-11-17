@@ -1,13 +1,27 @@
 
 from fenics import *
 from mshr import *
-from ParticleInterpolation import ParticleInterpolation
+from ParticleInterpolationPybind import interpolate as PI_interpolate
+
+class ParticleInterpolation:
+    def __init__(self, fluid_mesh, solid_mesh, disp):
+        self.disp = Function(disp.function_space())
+        self.disp.assign(disp)
+        self.fluid_mesh = fluid_mesh
+        self.solid_mesh = solid_mesh
+    def fluid_to_solid(self, fluid, solid):
+        PI_interpolate(fluid._cpp_object, self.disp._cpp_object, solid._cpp_object, self.fluid_mesh.hmax(), 4, False)
+    def solid_to_fluid(self, fluid, solid):
+        PI_interpolate(solid._cpp_object, self.disp._cpp_object, fluid._cpp_object, self.fluid_mesh.hmax(), 6, True)
+    def evaluate_current_points(self, disp):
+        self.disp.vector()[:] = disp.vector()[:]
+
 
 # 测试一个例子
 # 注意points中两个点的顺序，x,y坐标必须从小到大。
 
 fluid_mesh = BoxMesh(Point(0, 0, 0), Point(1, 1, 1), 32, 32, 32)
-solid_mesh = generate_mesh(Sphere(Point(0.5, 0.5, 0.5), 0.2), 20)
+solid_mesh = generate_mesh(Sphere(Point(0.5, 0.5, 0.6), 0.2), 20)
 
 
 Vf = VectorFunctionSpace(fluid_mesh, "P", 2)

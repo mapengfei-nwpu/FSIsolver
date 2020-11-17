@@ -84,10 +84,13 @@ while t < T + DOLFIN_EPS:
     time_end=time.time()
     print('fluid solver : ',time_end-time_start,' second')
     # step 2. interpolate velocity from fluid to solid
+    time_start=time.time()
     IB.fluid_to_solid(u0._cpp_object, velocity._cpp_object)
     # step 3. calculate disp for solid and update current gauss points and dof points
     disp.vector()[:] = velocity.vector()[:]*dt + disp.vector()[:]
     IB.evaluate_current_points(disp._cpp_object)
+    time_end=time.time()
+    print('interpolation from fluid to solid : ',time_end-time_start,' second')
     # step 4. calculate body force.
     time_start=time.time()
     b2 = assemble(L2)
@@ -95,7 +98,10 @@ while t < T + DOLFIN_EPS:
     time_end=time.time()
     print('solid solver : ',time_end-time_start,' second')
     # step 5. interpolate force from solid to fluid
+    time_start=time.time()
     IB.solid_to_fluid(f._cpp_object, force._cpp_object)
+    time_end=time.time()
+    print('interpolation from solid to fluid : ',time_end-time_start,' second')
     # step 6. update variables and save to file.
     ufile2 << velocity
     ufile << u0

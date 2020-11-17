@@ -1,13 +1,13 @@
 from NavierStokesSolver import *
-from DeltaInterpolation3D import *
+from ParticleInterpolation import *
 from dolfin import *
 from mshr import *
 
 # Define fluid solver
-FluidSolver = IPCSSolver
+FluidSolver = ProjectSolver
 
 # Set parameter values
-n_mesh = 32
+n_mesh = 128
 dt = 0.125/n_mesh
 T = 10
 nu = 0.01
@@ -16,9 +16,8 @@ nu_s = 0.1
 # Define fluid_mesh
 points = [Point(0, 0, 0), Point(1, 1, 1)]
 seperations = [n_mesh, n_mesh, n_mesh]
-regular_mesh = IBMesh(points, seperations)
-fluid_mesh = regular_mesh.mesh()
-solid_mesh = generate_mesh(Sphere(Point(0.6, 0.5, 0.5), 0.2), 15)
+fluid_mesh = BoxMesh(Point(0, 0, 0), Point(1, 1, 1), n_mesh, n_mesh, n_mesh)
+solid_mesh = generate_mesh(Sphere(Point(0.6, 0.5, 0.5), 0.2), 60)
 
 # Define function spaces W for Navier-Stokes equations
 V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2)
@@ -36,7 +35,7 @@ noslip = DirichletBC(V, (0, 0, 0), "near(x[0],1) || near(x[0],0) || near(x[1],0)
 upflow = DirichletBC(V, (1, 0, 0), "near(x[1],1)")
 pinpoint = DirichletBC(Q, 0, "near(x[0],0) && near(x[1],0) && near(x[2],0)", "pointwise")
 bcu = [noslip, upflow]
-bcp = [pinpoint]
+bcp = []
 # bcp = []
 
 # Create functions for fluid
@@ -52,7 +51,7 @@ disp.interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2))
 
 # Define interpolation object and fluid solver object
 navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
-IB = DeltaInterpolation(regular_mesh, solid_mesh, disp._cpp_object)
+IB = ParticleInterpolation(fluid_mesh, solid_mesh, disp)
 IB.evaluate_current_points(disp._cpp_object)
 # -inv(grad(disp)).T
 # Define variational problem for solid
@@ -75,21 +74,34 @@ ufile2 = File(directory + "/velocity2.pvd")
 ffile2 = File(directory + "/force2.pvd")
 
 t = dt
+import time
 while t < T + DOLFIN_EPS:
     # step 1. calculate velocity and pressure
+    time_start=time.time()
     u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
     u0.assign(u1)
     p0.assign(p1)
+    time_end=time.time()
+    print('fluid solver : ',time_end-time_start,' second')
     # step 2. interpolate velocity from fluid to solid
-    IB.fluid_to_solid(u0._cpp_object, velocity._cpp_object)
+    time_start=time.time()
+    IB.fluid_to_solid(u0, velocity)
     # step 3. calculate disp for solid and update current gauss points and dof points
     disp.vector()[:] = velocity.vector()[:]*dt + disp.vector()[:]
-    IB.evaluate_current_points(disp._cpp_object)
+    IB.evaluate_current_points(disp)
+    time_end=time.time()
+    print('interpolation from fluid to solid : ',time_end-time_start,' second')
     # step 4. calculate body force.
+    time_start=time.time()
     b2 = assemble(L2)
     solve(A2, force.vector(), b2, 'cg', 'sor' )
+    time_end=time.time()
+    print('solid solver : ',time_end-time_start,' second')
     # step 5. interpolate force from solid to fluid
-    IB.solid_to_fluid(f._cpp_object, force._cpp_object)
+    time_start=time.time()
+    IB.solid_to_fluid(f, force)
+    time_end=time.time()
+    print('interpolation from solid to fluid : ',time_end-time_start,' second')
     # step 6. update variables and save to file.
     ufile2 << velocity
     ufile << u0

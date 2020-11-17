@@ -8,7 +8,8 @@
 
 class PolynomialInterpolation {
 public:
-	PolynomialInterpolation(){
+	PolynomialInterpolation(bool cuda = true){
+		useCuda = cuda;
 		ref_basis_matrix();
 	}
 private:

@@ -83,8 +83,9 @@ libparticles.so: particleSystem.o particleSystem_cuda.o
 	$(EXEC) $(NVCC) -shared -o $@ $+ $(LIBRARIES)
 	rm -f particleSystem.o particleSystem_cuda.o
 	mv ./libparticles.so ../../
-	mv ./particleSystem.h ../../
-	mv ./particleSystem.cuh ../../
+	cp ./particleSystem.h ../../
+	cp ./particleSystem.cuh ../../
+
 
 run: build
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)

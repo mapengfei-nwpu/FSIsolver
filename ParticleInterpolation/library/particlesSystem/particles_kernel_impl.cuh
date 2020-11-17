@@ -130,10 +130,22 @@ void reorderDataAndFindCellStartD(uint   *cellStart,        // output: cell star
     }
 }
 
-__device__ float phi(const float h) {
+__device__ float phi_1(const float h) { // bad delta function
     float hh = abs(h);
     if (hh > 1.0) return 0.0;
     else return 0.25 * (1.0 + cos(fpi * hh));
+}
+
+__device__ float phi(const float h) // 4 point IB immersed boundary method
+{
+	float r = 2.0*fabs(h);
+	if (r<1 && r>=0){
+		return 0.125*(3-2*r+sqrt(1+4*r-4*r*r));
+	}
+	if (r<2 && r>=1){
+		return 0.125*(5-2*r-sqrt(-7+12*r-4*r*r));
+	}
+	return 0;
 }
 
 __device__ float delta(const float3 pos1, const float3 pos2) {
@@ -144,6 +156,7 @@ __device__ float delta(const float3 pos1, const float3 pos2) {
     auto z = 2.0* phi((pos1.z - pos2.z) / r)/r;
     return x * y * z;
 }
+
 
 __device__ float3 collideOne(const float3 pos1, const float3 pos2, const float4 val) {
 
@@ -211,7 +224,6 @@ void collideD(float3 *newVel,               // output: new velocity
             {
                 int3 neighbourPos = gridPos + make_int3(x, y, z);
                 force += collideCell(neighbourPos, index, pos, oldPos, oldVel, cellStart, cellEnd);
-
             }
         }
     }

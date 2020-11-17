@@ -44,7 +44,6 @@ void get_gauss_rule(
 		// Compute quadrature rule for the cell.
 		auto qr = gq.compute_quadrature_rule(*cell);
 		dolfin_assert(qr.second.size() == qr.first.size() / 3);
-		/// std::cout << qr.first.size() << std::endl;
 		for (size_t i = 0; i < qr.second.size(); i++)
 		{
 			/// push back what we get.

@@ -258,10 +258,10 @@ extern "C"{
 
         checkCudaErrors(cudaMalloc((void **)&dofs, num_dofs*num_cells*sizeof(double)));
         checkCudaErrors(cudaMalloc((void **)&dof_parameters, num_dofs*num_cells*sizeof(double)));
-        checkCudaErrors(cudaMalloc((void **)&gauss_points_ref, num_points*num_cells*sizeof(double)));
+        checkCudaErrors(cudaMalloc((void **)&gauss_points_ref, 3*num_points*num_cells*sizeof(double)));
         checkCudaErrors(cudaMalloc((void **)&results, value_size*num_points*num_cells*sizeof(double)));
         checkCudaErrors(cudaMemcpy(dofs, dofs_host, num_dofs*num_cells*sizeof(double), cudaMemcpyHostToDevice));
-        checkCudaErrors(cudaMemcpy(gauss_points_ref, gauss_points_ref_host, num_points*num_cells*sizeof(double), cudaMemcpyHostToDevice));
+        checkCudaErrors(cudaMemcpy(gauss_points_ref, gauss_points_ref_host, 3*num_points*num_cells*sizeof(double), cudaMemcpyHostToDevice));
         
         uint numThreads, numBlocks;
         computeGridSize(num_cells, 256, numBlocks, numThreads);

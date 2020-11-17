@@ -61,10 +61,11 @@ void evaluation_at_gauss_points(
     std::shared_ptr<const Function> function,
     std::vector<double> &points_out,
     std::vector<double> &values_out,
-    std::vector<double> &weights_out,
-    size_t order = 3)
+    std::vector<double> &weights_out)
 {
+
     // Smart shortcut
+    auto order   = quadrature_order;
     auto mesh    = function->function_space()->mesh();
     auto dim     = mesh->topology().dim();
     auto element = function->function_space()->element();
@@ -113,7 +114,8 @@ void evaluation_at_gauss_points(
     size_t num_dofs   = function_dofs.size()/num_cells;
     values_out.resize(points_out.size()/dim*value_size);
 
-    PolynomialInterpolation pli;
+    // this parameter is true if gpu is used.
+    PolynomialInterpolation pli(true);
     pli.evaluate_function(num_cells,num_gauss,value_size,num_dofs,coordinates.data(),
                           function_dofs.data(),points_out.data(),values_out.data());
 }
