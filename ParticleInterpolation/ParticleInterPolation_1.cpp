@@ -237,7 +237,7 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
     if(MPI_SIZE == 1) std::cout<<min<<max<<std::endl;
     else if (MPI_RANK == 0) std::cout<<min<<max<<std::endl;
 
-     // calculate positions, values, weights(if isSolid is true,
+    // calculate positions, values, weights(if isSolid is true,
     // f and d are on the solid and the pos_new will be evaluated on d)
     std::vector<float> pos_old;
     std::vector<float> val_old;
@@ -292,37 +292,15 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
         particle_system.interpolate(pos_new.size() / 3, pos_new.data(), val_new.data());
     }
 
-    /// distribute data on every processor.
-    /// easier, faster, but cost more memory.
-    /*
-    val_new = my_mpi_gather(val_new);
-    auto local_range = g->vector()->local_range();
-    auto local_size  = g->vector()->local_size();
-    auto offset = local_range.first;
-    std::vector<double> val_local(local_size);
-    for (size_t j = 0; j < local_size; j++) {
-	    val_local[j] = val_new[offset+j];
-	}
-    g->vector()->set_local(val_local);
-    g->vector()->apply("insert");
-    */
-
-    /// Try to use another way. This way cost less memory.
-    
     /// collect the local range of every processor. 
     auto temp_range = g->vector()->local_range();
     std::vector<size_t> single_range{temp_range.first, temp_range.second};
     std::vector<size_t> global_range;
     MPI::gather(MPI_COMM_WORLD, single_range, global_range, 0);
 
-    /// scatter values to every processor.
+    /// prepare data structures for sending.
     std::vector<std::vector<double>> values_send;
-    std::vector<double> values_receive;
     if (MPI_RANK == 0) {
-        std::cout << "size : " << global_range.size() << std::endl;
-        for(size_t i = 0; i<MPI_SIZE; i++){
-            std::cout << "from " << global_range[2*i] << " to " << global_range[2*i+1] <<" in processor "<< i <<std::endl;
-        }
         for(size_t i = 0; i < MPI_SIZE; i++){
             auto offset = global_range[2*i];
             auto local_size = global_range[2*i+1]-global_range[2*i];
@@ -333,8 +311,11 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
             values_send.push_back(temp_values);
         }
     }
-    std::cout<<"OL" <<std::endl;
+
+    /// scatter values to every processor.
+    std::vector<double> values_receive;
     MPI::scatter(MPI_COMM_WORLD, values_send, values_receive, 0);
+
     g->vector()->set_local(values_receive);
     g->vector()->apply("insert");
 }
