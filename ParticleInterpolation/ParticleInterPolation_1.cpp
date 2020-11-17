@@ -128,24 +128,10 @@ void evaluation_at_gauss_points(
         size_t num_gauss  = weights_out.size()/num_cells;
         size_t num_dofs   = function_dofs.size()/num_cells;
         values_out.resize(points_out.size()/dim*value_size);
-        
-        std::cout<<"dim : " << dim << "\n"
-                 <<"num_cells : " << num_cells << "\n"
-                 <<"num_gauss : " << num_gauss << "\n"
-                 <<"num_dofs : " << num_dofs << "\n"<<std::endl;
         // this parameter is true if gpu is used.
         PolynomialInterpolation pli(true);
         pli.evaluate_function(num_cells,num_gauss,value_size,num_dofs,coordinates.data(),
                             function_dofs.data(),points_out.data(),values_out.data());
-        
-        if(MPI_SIZE == 1) output("values_out.txt", values_out);
-        else if (MPI_RANK == 0) output("values_out_para.txt", values_out);
-        if(MPI_SIZE == 1) output("points_out.txt", points_out);
-        else if (MPI_RANK == 0) output("function_dofs_para.txt", function_dofs);
-        if(MPI_SIZE == 1) output("function_dofs.txt", function_dofs);
-        else if (MPI_RANK == 0) output("coordinates_para.txt", coordinates);
-        if(MPI_SIZE == 1) output("coordinates.txt", coordinates);
-        else if (MPI_RANK == 0) output("points_out_para.txt", points_out);
         
     } else {
         points_out.clear();
@@ -290,8 +276,6 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
         std::vector<float> pos_new_local;
         d->vector()->get_local(temp_pos_new);
         vectorTypeConvert(temp_pos_new,pos_new_local);
-        if(MPI_SIZE == 1) output("pos_new_local.txt", pos_new_local);
-        else if (MPI_RANK == 0) output("pos_new_local_para.txt", pos_new_local);
         MPI::gather(MPI_COMM_WORLD,pos_new_local, pos_new, 0);
         if(MPI_RANK == 0){
             val_new.resize(pos_new.size());
@@ -307,17 +291,10 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
         particle_system.inputData(pos_old.data(), val_old.data());
         particle_system.interpolate(pos_new.size() / 3, pos_new.data(), val_new.data());
     }
-    for(size_t i = 0; i< val_new.size(); i++){
-        pos_new[i] -=val_new[i];
-    }
-    if(MPI_SIZE == 1) output("pos_new.txt", pos_new);
-    else if (MPI_RANK == 0) output("pos_new_para.txt", pos_new);
-    if(MPI_SIZE == 1) output("pos_new.txt", pos_new);
-    else if (MPI_RANK == 0) output("pos_new_para.txt", pos_new);
-    if(MPI_SIZE == 1) output("pos_old.txt", pos_old);
-    else if (MPI_RANK == 0) output("pos_old_para.txt", pos_old);
-    if(MPI_SIZE == 1) output("val_old.txt", val_old);
-    else if (MPI_RANK == 0) output("val_old_para.txt", val_old);
+
+    /// distribute data on every processor.
+    /// easier, faster, but cost more memory.
+    /*
     val_new = my_mpi_gather(val_new);
     auto local_range = g->vector()->local_range();
     auto local_size  = g->vector()->local_size();
@@ -327,6 +304,38 @@ void interpolate(std::shared_ptr<const Function> f, // interpolation function
 	    val_local[j] = val_new[offset+j];
 	}
     g->vector()->set_local(val_local);
+    g->vector()->apply("insert");
+    */
+
+    /// Try to use another way. This way cost less memory.
+    
+    /// collect the local range of every processor. 
+    auto temp_range = g->vector()->local_range();
+    std::vector<size_t> single_range{temp_range.first, temp_range.second};
+    std::vector<size_t> global_range;
+    MPI::gather(MPI_COMM_WORLD, single_range, global_range, 0);
+
+    /// scatter values to every processor.
+    std::vector<std::vector<double>> values_send;
+    std::vector<double> values_receive;
+    if (MPI_RANK == 0) {
+        std::cout << "size : " << global_range.size() << std::endl;
+        for(size_t i = 0; i<MPI_SIZE; i++){
+            std::cout << "from " << global_range[2*i] << " to " << global_range[2*i+1] <<" in processor "<< i <<std::endl;
+        }
+        for(size_t i = 0; i < MPI_SIZE; i++){
+            auto offset = global_range[2*i];
+            auto local_size = global_range[2*i+1]-global_range[2*i];
+            std::vector<double> temp_values(local_size);
+            for (size_t j = 0; j < local_size; j++) {
+		        temp_values[j] = val_new[offset+j];
+	        }
+            values_send.push_back(temp_values);
+        }
+    }
+    std::cout<<"OL" <<std::endl;
+    MPI::scatter(MPI_COMM_WORLD, values_send, values_receive, 0);
+    g->vector()->set_local(values_receive);
     g->vector()->apply("insert");
 }
 
