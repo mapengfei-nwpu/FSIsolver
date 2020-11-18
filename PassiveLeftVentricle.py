@@ -1,7 +1,6 @@
 from fenics import *
 def first_PK_stress(u):                       # input the displacement
-    
-    # Parameters
+
     C = Constant(10.0)                      # C = 10kPa
     bf = Constant(1.0)
     bt = Constant(1.0)
@@ -25,7 +24,13 @@ def first_PK_stress(u):                       # input the displacement
     Wpassive = C/2.0 * (exp(Q) - 1)
 
     FF = variable(F)
-    # C = variable(F.T*F)
-    # S=2*diff(Wpassive,C)         # calculate the second PK stress tensor
     return diff(Wpassive, FF)      # Calculate the first PK stress tensor
 
+    # C = variable(F.T*F)          # calculate the right Cauchy-Green tensor
+    # S=2*diff(Wpassive,C)         # calculate the second PK stress tensor
+    # return F*S                   # Calculate the first PK stress tensor
+
+#TODO: Active stress tensor.
+#TODO: Multiplier on base at the z direction.
+#TODO: Pressure on the inner wall.
+#TODO: Unit conversion: mesh size, viscous coefficient, pressure.
