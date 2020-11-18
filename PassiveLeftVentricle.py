@@ -1,13 +1,13 @@
 from fenics import *
 def first_PK_stress(u):                       # input the displacement
 
-    C = Constant(10.0)                      # C = 10kPa
+    C = Constant(10000.0)                      # C = 10kPa
     bf = Constant(1.0)
     bt = Constant(1.0)
     bfs = Constant(1.0)
 
     I = Identity(len(u))
-    F = I + grad(u)                         # nabla_grad is used someplaces. I think grad is correct.
+    F = variable(I + grad(u))                         # nabla_grad is used someplaces. I think grad is correct.
     E = 0.5*(F.T*F - I)
 
     e1 = as_vector([ 1.0, 0.0, 0.0 ])
@@ -23,8 +23,7 @@ def first_PK_stress(u):                       # input the displacement
 
     Wpassive = C/2.0 * (exp(Q) - 1)
 
-    FF = variable(F)
-    return diff(Wpassive, FF)      # Calculate the first PK stress tensor
+    return diff(Wpassive, F)       # Calculate the first PK stress tensor
 
     # C = variable(F.T*F)          # calculate the right Cauchy-Green tensor
     # S=2*diff(Wpassive,C)         # calculate the second PK stress tensor
@@ -34,3 +33,19 @@ def first_PK_stress(u):                       # input the displacement
 #TODO: Multiplier on base at the z direction.
 #TODO: Pressure on the inner wall.
 #TODO: Unit conversion: mesh size, viscous coefficient, pressure.
+
+if __name__ == "__main__":
+    from LeftVentricleMesh import mesh 
+    # mesh = UnitCubeMesh(10,10,10)
+    V    = VectorFunctionSpace(mesh,"P",2)
+    u = TrialFunction(V)
+    v = TestFunction(V)
+    disp = interpolate(Expression(("x[0]","x[1]","x[2]"),degree=2), V)
+    F = inner(first_PK_stress(disp), grad(v))*dx + inner(u, v)*dx
+    a = lhs(F)
+    L = rhs(F)
+    A = assemble(a)
+    b = assemble(L)
+    n = Function(V)
+    solve(A, n.vector(), b, 'cg', 'sor' )
+    File("n.pvd") << n
