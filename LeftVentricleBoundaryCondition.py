@@ -1,14 +1,10 @@
 from fenics import *
-from LeftVentricleMesh     import mesh          as solid_mesh
-from LeftVentricleMesh     import mesh_function as solid_boundary
-from PassiveLeftVentricle  import first_PK_stress
 
 
 # this function is used to calculate the out normal of a
 # given mesh. This code comes from the discussion on
 # https://fenicsproject.discourse.group/t/how-to-plot-no
 # rmal-unit-vector-of-faces-in-a-2d-mesh/3912
-
 def out_normal(mesh):
     n = FacetNormal(mesh)
     V = VectorFunctionSpace(mesh, "CG", 1)
@@ -23,20 +19,74 @@ def out_normal(mesh):
     solve(A, nh.vector(), L)
     return nh
 
-#TODO: 1.Active stress tensor.
-#TODO: 2.Multiplier on base at the z direction.
-#TODO: 3.Pressure on the inner wall.
-#TODO: 4.Unit conversion: mesh size, viscous coefficient, pressure.
+
+# 3. Pressure on the inner wall.
+def wall_pressure(force, boundary, marker):
+    
+    V = force.function_space()
+    C = 1.0
+    mesh = V.mesh()
+
+    # get a unit function.
+    # unit = Function(V)
+    # unit.vector().vec().shift(1)
+
+    # get a zero function.
+    # zero = Function(V)
+
+    # get the pressure
+    n = out_normal(mesh)
+    n_vector = n.vector()
+    n_vector *= -C
+
+    u = Function(V)
+    bc = DirichletBC(V, n, boundary, marker)
+    bc.apply(u.vector())
+
+    force.vector().axpy(1.0,u.vector())
+
+
+# 2. Lagrangian multiplier on base
+def base_constraint(displace, force, boundary, marker):
+
+    V = force.function_space()
+    penalty = 10e9
+    z_direction = False # constraint can be in z direction or in x,y,z directions
+
+    if z_direction :
+        # extract the z component of displacement
+        z = displace.sub(2, deepcopy = True)
+        # apply the boundary condition
+        z_vector = z.vector()
+        z_vector *= penalty
+        bc = DirichletBC(V.sub(2), z, boundary, marker)
+    else :
+        p = Function(V)
+        p.assign(displace)
+        p_vector = p.vector()  # p_vector is a reference to the vector
+        p_vector *= penalty
+        bc = DirichletBC(V, p, boundary, marker)
+
+    bc.apply(force.vector())
+
+
+def apply_boundary_conditions(disp, force, solid_boundary, marker_base, marker_wall):
+    wall_pressure(force, solid_boundary, marker_wall)
+    base_constraint(disp, force, solid_boundary, marker_base)
 
 
 if __name__ == "__main__":
-    n = out_normal(solid_mesh)                                              # 3.calculation of the out normal direction 
-    File("nh_1.pvd") << n                                                   
-    Q = FunctionSpace(solid_mesh, "P", 2)
+    from LeftVentricleMesh     import mesh          as solid_mesh
+    from LeftVentricleMesh     import mesh_function as solid_boundary
     V = VectorFunctionSpace(solid_mesh, "P", 2)
-    bc = DirichletBC(V, n, solid_boundary, 2)                               # 3.set it as the boundary condition
-    u = Function(V)
-    bc.apply(u.vector())                                                    # 3.apply the pressure on the wall on the out normal direction
-    File("u.pvd") << u
-    z = n.sub(0,deepcopy=True)                                              # 2.Extract the third component of displacement as a lagrangian multiplier. 
-    bc_component = DirichletBC(V.sub(2), n[0], solid_boundary, 2)           # 2.multiplier should be implied on the third component of interactive force.
+    disp = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2), V)
+    force = interpolate(Expression(("10000", "10000", "10000"), degree=2), V)
+
+    marker_base = 1
+    marker_wall = 2
+
+    wall_pressure(force, solid_boundary, marker_wall)
+    File("wall_pressure.pvd") << force
+
+    base_constraint(disp, force, solid_boundary, marker_base)
+    File("base_constraint.pvd") << force
