@@ -1,7 +1,7 @@
 from fenics import *
 def first_PK_stress(u):                       # input the displacement
 
-    C = Constant(10000.0)                      # C = 10kPa
+    C = Constant(100000.0)                      # C = 10kPa
     bf = Constant(1.0)
     bt = Constant(1.0)
     bfs = Constant(1.0)
@@ -29,10 +29,6 @@ def first_PK_stress(u):                       # input the displacement
     # S=2*diff(Wpassive,C)         # calculate the second PK stress tensor
     # return F*S                   # Calculate the first PK stress tensor
 
-#TODO: Active stress tensor.
-#TODO: Multiplier on base at the z direction.
-#TODO: Pressure on the inner wall.
-#TODO: Unit conversion: mesh size, viscous coefficient, pressure.
 
 if __name__ == "__main__":
     from LeftVentricleMesh import mesh 
@@ -41,7 +37,9 @@ if __name__ == "__main__":
     u = TrialFunction(V)
     v = TestFunction(V)
     disp = interpolate(Expression(("x[0]","x[1]","x[2]"),degree=2), V)
-    F = inner(first_PK_stress(disp), grad(v))*dx + inner(u, v)*dx
+    n = FacetNormal(mesh)
+    F = inner(u, v)*dx - inner(div(first_PK_stress(disp)),v)*dx # + inner(first_PK_stress(disp)*n, v)*ds
+    # F = inner(first_PK_stress(disp), grad(vs))*dx + inner(us, vs)*dx
     a = lhs(F)
     L = rhs(F)
     A = assemble(a)
