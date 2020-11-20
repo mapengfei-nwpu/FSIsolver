@@ -3,9 +3,9 @@ from fenics import *
 from mshr import *
 
 mesh_size = 50
-big = Ellipsoid(Point(0,0,0),10,10,20)
-small = Ellipsoid(Point(0,0,0),7,7,17)
-gaizi = Box(Point(-11,-11,5),Point(11,11,21))
+big = Ellipsoid(Point(0,0,0),1.0,1.0,2.0)
+small = Ellipsoid(Point(0,0,0),0.7,0.7,1.7)
+gaizi = Box(Point(-1.1,-1.1,0.5),Point(1.1,1.1,2.1))
 domain = big-small-gaizi
 mesh = generate_mesh(domain, mesh_size)
 
@@ -14,12 +14,12 @@ mesh_function = MeshFunction("size_t", mesh, 2, value = 0)
 
 class VentricleBase(SubDomain):
     def inside(self, x, on_boundary):
-        return on_boundary and near(x[2],5.0)
+        return on_boundary and near(x[2],0.5)
 
 
 class VentricleWall(SubDomain):
     def inside(self, x, on_boundary):
-        temp = (x[0]*x[0] + x[1]*x[1])/7.0/7.0 + x[2]*x[2]/17.0/17.0
+        temp = (x[0]*x[0] + x[1]*x[1])/0.7/0.7 + x[2]*x[2]/1.7/1.7
         return on_boundary and temp < 1.001
 
 
