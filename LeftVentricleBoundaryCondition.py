@@ -1,6 +1,5 @@
 from fenics import *
 
-
 # this function is used to calculate the out normal of a
 # given mesh. This code comes from the discussion on
 # https://fenicsproject.discourse.group/t/how-to-plot-no
@@ -21,11 +20,26 @@ def out_normal(mesh):
 
 
 # 3. Pressure on the inner wall.
-def wall_pressure(force, boundary, marker):
+def wall_pressure(displace, force, boundary, marker):
     
     V = force.function_space()
-    C = 1.0
+    C = 100000.0
     mesh = V.mesh()
+
+    # moveback = original position - current position 
+    # moveto   = -moveback
+    moveback = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=1), V)
+    moveto = Function(V)
+    moveback_vector = moveback.vector()
+    moveback_vector -= displace.vector()
+    moveto_vector = moveto.vector()
+    moveto_vector -= moveback.vector()
+
+    ALE.move(mesh, moveto)
+    File("to_mesh.pvd") << mesh
+    n = out_normal(mesh)
+    ALE.move(mesh, moveback)
+    File("back_mesh.pvd") << mesh
 
     # get a unit function.
     # unit = Function(V)
@@ -34,15 +48,14 @@ def wall_pressure(force, boundary, marker):
     # get a zero function.
     # zero = Function(V)
 
-    # get the pressure
-    n = out_normal(mesh)
+    # get the pressure on normal direction.
     n_vector = n.vector()
     n_vector *= -C
 
     u = Function(V)
     bc = DirichletBC(V, n, boundary, marker)
     bc.apply(u.vector())
-
+    
     force.vector().axpy(1.0,u.vector())
 
 
@@ -50,19 +63,24 @@ def wall_pressure(force, boundary, marker):
 def base_constraint(displace, force, boundary, marker):
 
     V = force.function_space()
-    penalty = 10e9
+    penalty = 1e4
+    move = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2), V)
+    move_vector = move.vector()
+    move_vector -= displace.vector()
+    File("move.pvd") << move
+    
     z_direction = False # constraint can be in z direction or in x,y,z directions
 
     if z_direction :
         # extract the z component of displacement
-        z = displace.sub(2, deepcopy = True)
+        z = move.sub(2, deepcopy = True)
         # apply the boundary condition
         z_vector = z.vector()
         z_vector *= penalty
         bc = DirichletBC(V.sub(2), z, boundary, marker)
     else :
         p = Function(V)
-        p.assign(displace)
+        p.assign(move)
         p_vector = p.vector()  # p_vector is a reference to the vector
         p_vector *= penalty
         bc = DirichletBC(V, p, boundary, marker)
@@ -71,7 +89,7 @@ def base_constraint(displace, force, boundary, marker):
 
 
 def apply_boundary_conditions(disp, force, solid_boundary, marker_base, marker_wall):
-    wall_pressure(force, solid_boundary, marker_wall)
+    wall_pressure(disp, force, solid_boundary, marker_wall)
     base_constraint(disp, force, solid_boundary, marker_base)
 
 
@@ -79,13 +97,13 @@ if __name__ == "__main__":
     from LeftVentricleMesh     import mesh          as solid_mesh
     from LeftVentricleMesh     import mesh_function as solid_boundary
     V = VectorFunctionSpace(solid_mesh, "P", 2)
-    disp = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2), V)
+    disp = interpolate(Expression(("x[0]+1", "x[1]+1", "x[2]+1"), degree=2), V)
     force = interpolate(Expression(("10000", "10000", "10000"), degree=2), V)
 
     marker_base = 1
     marker_wall = 2
 
-    wall_pressure(force, solid_boundary, marker_wall)
+    wall_pressure(disp, force, solid_boundary, marker_wall)
     File("wall_pressure.pvd") << force
 
     base_constraint(disp, force, solid_boundary, marker_base)
