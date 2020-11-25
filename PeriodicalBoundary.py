@@ -5,8 +5,8 @@ from fenics import *
 # min = [0.0, 0.0, 0.0]
 # max = [1.0, 1.0, 1.0]
 
-min = [-2.0, -2.0, -3.0]
-max = [ 2.0,  2.0,  1.0]
+min = [-20.0, -20.0, -30.0]
+max = [ 20.0,  20.0,  10.0]
 
 class PeriodicalBoundary(SubDomain):
 

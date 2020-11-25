@@ -23,7 +23,7 @@ def out_normal(mesh):
 def wall_pressure(displace, force, boundary, marker):
     
     V = force.function_space()
-    C = 100000.0
+    C = 10.0
     mesh = V.mesh()
 
     # moveback = original position - current position 
@@ -63,11 +63,14 @@ def wall_pressure(displace, force, boundary, marker):
 def base_constraint(displace, force, boundary, marker):
 
     V = force.function_space()
-    penalty = 1e4
+    # Zhang Ruihang told me, in the simulation of heart valve,
+    # the penalty is 50kPa when the pressure of blood is about 10kPa.
+    # which is 5*10^6 dyn/cm^2
+    penalty = 50                    
     move = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2), V)
     move_vector = move.vector()
     move_vector -= displace.vector()
-    File("move.pvd") << move
+    # f = 1e4*(x0-xt)
     
     z_direction = False # constraint can be in z direction or in x,y,z directions
 
@@ -103,8 +106,11 @@ if __name__ == "__main__":
     marker_base = 1
     marker_wall = 2
 
-    wall_pressure(disp, force, solid_boundary, marker_wall)
+    # wall_pressure(disp, force, solid_boundary, marker_wall)
     File("wall_pressure.pvd") << force
 
-    base_constraint(disp, force, solid_boundary, marker_base)
+    # base_constraint(disp, force, solid_boundary, marker_base)
     File("base_constraint.pvd") << force
+
+    apply_boundary_conditions(disp, force, solid_boundary, marker_base, marker_wall)
+    File("disp.pvd") << disp

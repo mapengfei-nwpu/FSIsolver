@@ -8,7 +8,7 @@ class ParticleInterpolation:
         self.fluid_mesh = fluid_mesh
         self.solid_mesh = solid_mesh
     def fluid_to_solid(self, fluid, solid):
-        PI_interpolate(fluid._cpp_object, self.disp._cpp_object, solid._cpp_object, self.fluid_mesh.hmax(), 4, False)
+        PI_interpolate(fluid._cpp_object, self.disp._cpp_object, solid._cpp_object, self.fluid_mesh.hmax(), 6, False)
     def solid_to_fluid(self, fluid, solid):
         PI_interpolate(solid._cpp_object, self.disp._cpp_object, fluid._cpp_object, self.fluid_mesh.hmax(), 6, True)
     def evaluate_current_points(self, disp):

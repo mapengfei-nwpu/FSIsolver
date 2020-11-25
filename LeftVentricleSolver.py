@@ -10,15 +10,19 @@ from ParticleInterpolation import ParticleInterpolation
 from PeriodicalBoundary    import periodic_boundary
 # Set parameter for the fluid.
 n_mesh = 32
-dt = 0.0001/n_mesh
+dt = 0.0001
 T = 10
-nu = 0.04
-points = [Point(-2.0, -2.0,-3.0), Point(2.0, 2.0, 1.0)]
+nu = 4
+points = [Point(-20, -20,-30), Point(20, 20, 10)]
 fluid_mesh = BoxMesh(points[0], points[1], n_mesh, n_mesh, n_mesh)
 
 # the markers of the boundary
 marker_base = 1
 marker_wall = 2
+
+# boundary conditions
+bcp = []
+bcu = []
 
 # Define function spaces for Navier-Stokes equations
 V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2, constrained_domain=periodic_boundary)
@@ -47,11 +51,7 @@ navier_stokes_solver = FluidSolver(u0, p0, f, dt=dt, nu=nu)
 IB = ParticleInterpolation(fluid_mesh, solid_mesh, disp)
 IB.evaluate_current_points(disp._cpp_object)
 
-# Define the constutive law for the left ventricle
-n = FacetNormal(solid_mesh)
-# F = inner(us, vs)*dx - inner(div(first_PK_stress(disp)),vs)*dx + inner(first_PK_stress(disp)*n, vs)*ds
-F = inner(us, vs)*dx - inner(div(first_PK_stress(disp)),vs)*dx # + inner(first_PK_stress(disp)*n, vs)*ds
-# F = inner(first_PK_stress(disp), grad(vs))*dx + inner(us, vs)*dx
+F = inner(first_PK_stress(disp), grad(vs))*dx + inner(us, vs)*dx
 a = lhs(F)
 L = rhs(F)
 A = assemble(a)
@@ -91,6 +91,7 @@ while t < T + DOLFIN_EPS:
     print('solid solver : ',time_end-time_start,' second')
     # apply the boundary of the solid
     apply_boundary_conditions(disp,force,solid_boundary,marker_base,marker_wall)
+    force.vector()[:] = force.vector()[:]*1e6
     file_force << force
     # step 5. interpolate force from solid to fluid
     time_start=time.time()

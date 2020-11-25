@@ -1,15 +1,18 @@
 from fenics import *
+
+
+
 def first_PK_stress(u):                       # input the displacement
 
-    C = Constant(100000.0)                      # C = 10kPa
+    C = Constant(10.0)                      # C = 10kPa
     bf = Constant(1.0)
     bt = Constant(1.0)
     bfs = Constant(1.0)
 
     I = Identity(len(u))
-    F = variable(I + grad(u))                         # nabla_grad is used someplaces. I think grad is correct.
+    F = variable(grad(u))                         # nabla_grad is used someplaces. I think grad is correct.
     E = 0.5*(F.T*F - I)
-
+    
     e1 = as_vector([ 1.0, 0.0, 0.0 ])
     e2 = as_vector([ 0.0, 1.0, 0.0 ])
     e3 = as_vector([ 0.0, 0.0, 1.0 ])
@@ -23,27 +26,19 @@ def first_PK_stress(u):                       # input the displacement
 
     Wpassive = C/2.0 * (exp(Q) - 1)
 
-    return diff(Wpassive, F)       # Calculate the first PK stress tensor
-
-    # C = variable(F.T*F)          # calculate the right Cauchy-Green tensor
-    # S=2*diff(Wpassive,C)         # calculate the second PK stress tensor
-    # return F*S                   # Calculate the first PK stress tensor
-
+    return diff(Wpassive, F)
 
 if __name__ == "__main__":
-    from LeftVentricleMesh import mesh 
-    # mesh = UnitCubeMesh(10,10,10)
+    from LeftVentricleMesh import mesh
     V    = VectorFunctionSpace(mesh,"P",2)
     u = TrialFunction(V)
     v = TestFunction(V)
-    disp = interpolate(Expression(("x[0]","x[1]","x[2]"),degree=2), V)
-    n = FacetNormal(mesh)
-    F = inner(u, v)*dx - inner(div(first_PK_stress(disp)),v)*dx # + inner(first_PK_stress(disp)*n, v)*ds
-    # F = inner(first_PK_stress(disp), grad(vs))*dx + inner(us, vs)*dx
+    disp = interpolate(Expression(("x[0]","x[1]","x[2]"),degree=3), V)
+    F = inner(first_PK_stress(disp), grad(v))*dx + inner(u, v)*dx
     a = lhs(F)
     L = rhs(F)
     A = assemble(a)
     b = assemble(L)
     n = Function(V)
-    solve(A, n.vector(), b, 'cg', 'sor' )
-    File("n.pvd") << n
+    solve(A, n.vector(), b, "cg", "sor")
+    File("n_1.pvd") << n
