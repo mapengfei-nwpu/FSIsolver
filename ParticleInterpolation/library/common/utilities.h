@@ -82,11 +82,12 @@ void output(std::string filename, std::vector<T> &data){
 /// [a1,b1,c1...,a2,b2,c2,...] <-> [[a1,a2...],[b1,b2...]...]
 
 template <typename T>
-void separate_vector(std::vector<std::vector<T>> &separate, std::vector<T> &connect, size_t num_vectors){
+void separate_vector(std::vector<std::vector<T>> &separate, const std::vector<T> &connect, size_t num_vectors){
     
     // assert(separate.size() > 0);
     // assert(connect.size() % num_vectors == 0);
-    size_t num_elements = connect.size() % num_vectors;
+    size_t num_elements = connect.size() / num_vectors;
+    std::cout<< "num_elements" <<num_elements<<std::endl;
 
     separate.resize(num_vectors);
     for (size_t i = 0; i < num_vectors; i++){
@@ -101,7 +102,7 @@ void separate_vector(std::vector<std::vector<T>> &separate, std::vector<T> &conn
 }
 
 template <typename T>
-void connect_vectors(std::vector<std::vector<T>> &separate, std::vector<T> &connect){
+void connect_vectors(std::vector<std::vector<T>> &separate, const std::vector<T> &connect){
     
     /// assert(separate.size() > 0);
     /// assert(connect.size() == 0);

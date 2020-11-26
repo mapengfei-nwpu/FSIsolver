@@ -24,39 +24,27 @@ using namespace dolfin;
 void find_min_max_points(
     const std::vector<double> &coord_1,
     const std::vector<double> &coord_2,
-    Point &min,
-    Point &max)
+    Point &point_min,
+    Point &point_max)
 {
-    double min_x = std::numeric_limits<double>::max();
-    double min_y = std::numeric_limits<double>::max();
-    double min_z = std::numeric_limits<double>::max();
-    double max_x = std::numeric_limits<double>::min();
-    double max_y = std::numeric_limits<double>::min();
-    double max_z = std::numeric_limits<double>::min();
-    for (size_t i = 0; i < coord_1.size() / 3; i++)
-    {
-        min_x = coord_1[3 * i] < min_x ? coord_1[3 * i] : min_x;
-        max_x = coord_1[3 * i] > max_x ? coord_1[3 * i] : max_x;
-        min_y = coord_1[3 * i + 1] < min_y ? coord_1[3 * i + 1] : min_y;
-        max_y = coord_1[3 * i + 1] > max_y ? coord_1[3 * i + 1] : max_y;
-        min_z = coord_1[3 * i + 2] < min_z ? coord_1[3 * i + 2] : min_z;
-        max_z = coord_1[3 * i + 2] > max_z ? coord_1[3 * i + 2] : max_z;
+    /// [a1,b1,c1..., a2,b2,c2,...] => [[a1,a2...], [b1,b2...]...]
+    /// split the two vectors and find maximum and minimum at each axil direction.
+    std::vector<std::vector<double>> separated_coord_1;
+    std::vector<std::vector<double>> separated_coord_2;
+
+    separate_vector(separated_coord_1,coord_1,3);
+    separate_vector(separated_coord_2,coord_2,3);
+
+    // i = 0 1 2
+    //     x y z
+    for (size_t i = 0; i < 3; i++){
+        double max_1 = *max_element(separated_coord_1[i].begin(),separated_coord_1[i].end());
+        double min_1 = *min_element(separated_coord_1[i].begin(),separated_coord_1[i].end());
+        double max_2 = *max_element(separated_coord_2[i].begin(),separated_coord_2[i].end());
+        double min_2 = *min_element(separated_coord_2[i].begin(),separated_coord_2[i].end());
+        point_min[i] = std::min(min_1, min_2);
+        point_max[i] = std::max(max_1, max_2);
     }
-    for (size_t i = 0; i < coord_2.size() / 3; i++)
-    {
-        min_x = coord_2[3 * i] < min_x ? coord_2[3 * i] : min_x;
-        max_x = coord_2[3 * i] > max_x ? coord_2[3 * i] : max_x;
-        min_y = coord_2[3 * i + 1] < min_y ? coord_2[3 * i + 1] : min_y;
-        max_y = coord_2[3 * i + 1] > max_y ? coord_2[3 * i + 1] : max_y;
-        min_z = coord_2[3 * i + 2] < min_z ? coord_2[3 * i + 2] : min_z;
-        max_z = coord_2[3 * i + 2] > max_z ? coord_2[3 * i + 2] : max_z;
-    }
-    min[0] = min_x;
-    min[1] = min_y;
-    min[2] = min_z;
-    max[0] = max_x;
-    max[1] = max_y;
-    max[2] = max_z;
 }
 
 void evaluation_at_gauss_points(
