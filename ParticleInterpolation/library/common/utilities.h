@@ -79,8 +79,49 @@ void output(std::string filename, std::vector<T> &data){
     ofs.close();
 }
 
+
+/// separate a vector into several vectors.
+/// [a1,b1,c1...,a2,b2,c2,...] <-> [[a1,a2...],[b1,b2...]...]
+
+template <typename T>
+void separate_vector(std::vector<std::vector<T>> &separate, std::vector<T> &connect, size_t num_vectors){
+    
+    // assert(separate.size() > 0);
+    // assert(connect.size() % num_vectors == 0);
+    size_t num_elements = connect.size() % num_vectors;
+
+    separate.resize(num_vectors);
+    for (size_t i = 0; i < num_vectors; i++){
+        separate[i].resize(num_elements);
+    }
+
+    for (size_t i = 0; i < num_elements; i++){
+        for (size_t j = 0; j < num_vectors; j++){
+            separate[j][i] = connect[num_vectors*i+j];
+        }
+    }
+}
+
+template <typename T>
+void connect_vectors(std::vector<std::vector<T>> &separate, std::vector<T> &connect){
+    
+    /// assert(separate.size() > 0);
+    /// assert(connect.size() == 0);
+    size_t num_vectors = separate.size();
+    size_t num_elements = separate[0].size();
+
+    for (size_t i = 0; i < separate.size(); i++){
+        /// assert(separate[i].size() == num_elements);
+    }
+
+    for (size_t i = 0; i < num_elements; i++){
+        for (size_t j = 0; j < num_vectors; j++){
+            connect.append(separate[j][i]);
+        }
+    }
+}
+
+
+
 # endif
 
-
-
-#endif
