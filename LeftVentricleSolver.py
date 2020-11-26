@@ -12,8 +12,8 @@ from PeriodicalBoundary    import periodic_boundary
 n_mesh = 32
 dt = 0.0001
 T = 10
-nu = 4
-points = [Point(-20, -20,-30), Point(20, 20, 10)]
+nu = 0.04
+points = [Point(-2.0, -2.0,-3.0), Point(2.0, 2.0, 1.0)]
 fluid_mesh = BoxMesh(points[0], points[1], n_mesh, n_mesh, n_mesh)
 
 # the markers of the boundary
@@ -25,8 +25,8 @@ bcp = []
 bcu = []
 
 # Define function spaces for Navier-Stokes equations
-V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2, constrained_domain=periodic_boundary)
-Q = FunctionSpace(fluid_mesh, "Lagrange", 2, constrained_domain=periodic_boundary)
+V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2)#, constrained_domain=periodic_boundary)
+Q = FunctionSpace(fluid_mesh, "Lagrange", 2)#, constrained_domain=periodic_boundary)
 
 # Define function space for left ventricle
 Vs = VectorFunctionSpace(solid_mesh, "Lagrange", 2)
@@ -91,7 +91,7 @@ while t < T + DOLFIN_EPS:
     print('solid solver : ',time_end-time_start,' second')
     # apply the boundary of the solid
     apply_boundary_conditions(disp,force,solid_boundary,marker_base,marker_wall)
-    force.vector()[:] = force.vector()[:]*1e6
+    force.vector()[:] = force.vector()[:]*1e4
     file_force << force
     # step 5. interpolate force from solid to fluid
     time_start=time.time()
