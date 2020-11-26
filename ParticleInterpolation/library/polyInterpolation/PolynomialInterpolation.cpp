@@ -1,6 +1,5 @@
 #include "PolynomialInterpolation.h"
 #include "PolynomialInterpolation.cuh"
-#include <ctime>
 
 enum ElementType { Triangle, Tetrahedron, Quadrilateral, Hexahedron };
 
@@ -131,7 +130,6 @@ void PolynomialInterpolation::evaluate_function(
     size_t num_cells, size_t num_gauss, size_t value_size, size_t num_dofs,
     double *coordinates, double *dofs, double *gauss_points, double *results)
 {
-    clock_t start = std::clock();
     double *gauss_points_ref = (double *)malloc(sizeof(double) *num_cells * num_gauss * 3);
     double *dof_parameters  = (double *)malloc(sizeof(double) *num_cells * num_dofs);
     if(!useCuda){
@@ -160,10 +158,6 @@ void PolynomialInterpolation::evaluate_function(
     }
     free(dof_parameters);
     free(gauss_points_ref);
-    clock_t end = std::clock();
-    if (useCuda) printf("use cuda :\n");
-    else printf("not use cuda:\n");
-    std::cout << "花费了" << (double)(end - start) / CLOCKS_PER_SEC << "秒" << std::endl;
 }
 
 void PolynomialInterpolation::ref_basis_matrix()
