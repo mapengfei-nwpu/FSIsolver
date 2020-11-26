@@ -35,8 +35,6 @@ void vectorTypeConvert(const std::vector<T1> &from, std::vector<T2> &to)
     }
 }
 
-# ifndef VECTOR_TXT_H
-# define VECTOR_TXT_H
 #include<iostream>
 #include<fstream>
 #include<vector>

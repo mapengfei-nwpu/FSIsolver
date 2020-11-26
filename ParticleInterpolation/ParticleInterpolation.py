@@ -1,5 +1,9 @@
-from .ParticleInterpolationPybind import interpolate as PI_interpolate
 from fenics import Function
+
+if __name__ == '__main__' :
+    from ParticleInterpolationPybind import interpolate as PI_interpolate
+else :
+    from .ParticleInterpolationPybind import interpolate as PI_interpolate
 
 class ParticleInterpolation:
     def __init__(self, fluid_mesh, solid_mesh, disp):
