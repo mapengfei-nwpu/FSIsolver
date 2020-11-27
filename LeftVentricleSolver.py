@@ -1,5 +1,5 @@
 from fenics import *
-
+from loguru import logger
 from LeftVentricleMesh     import mesh          as solid_mesh
 from LeftVentricleMesh     import mesh_function as solid_boundary
 from PassiveLeftVentricle  import first_PK_stress
@@ -10,7 +10,7 @@ from ParticleInterpolation import ParticleInterpolation
 from PeriodicalBoundary    import periodic_boundary
 # Set parameter for the fluid.
 n_mesh = 32
-dt = 0.0001
+dt = 1e-4
 T = 10
 nu = 0.04
 points = [Point(-2.0, -2.0,-3.0), Point(2.0, 2.0, 1.0)]
@@ -98,6 +98,7 @@ while t < T + DOLFIN_EPS:
     IB.solid_to_fluid(f, force)
     time_end=time.time()
     print('interpolation from solid to fluid : ',time_end-time_start,' second')
+    logger.info("interpolation from solid to fluid")
     file_force2 << f
     # step 6. update variables and save to file.
     file_disp << disp
