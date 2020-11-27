@@ -1,5 +1,4 @@
 from fenics import *
-
 # this function is used to calculate the out normal of a
 # given mesh. This code comes from the discussion on
 # https://fenicsproject.discourse.group/t/how-to-plot-no
@@ -66,7 +65,7 @@ def base_constraint(displace, force, boundary, marker):
     # Zhang Ruihang told me, in the simulation of heart valve,
     # the penalty is 50kPa when the pressure of blood is about 10kPa.
     # which is 5*10^6 dyn/cm^2
-    penalty = 50                    
+    penalty = 500                    
     move = interpolate(Expression(("x[0]", "x[1]", "x[2]"), degree=2), V)
     move_vector = move.vector()
     move_vector -= displace.vector()
@@ -88,7 +87,9 @@ def base_constraint(displace, force, boundary, marker):
         p_vector *= penalty
         bc = DirichletBC(V, p, boundary, marker)
 
-    bc.apply(force.vector())
+    u = Function(V)
+    bc.apply(u.vector())    
+    force.vector().axpy(1.0,u.vector())
 
 
 def apply_boundary_conditions(disp, force, solid_boundary, marker_base, marker_wall):
