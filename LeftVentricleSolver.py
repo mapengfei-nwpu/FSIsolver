@@ -10,7 +10,7 @@ from ParticleInterpolation import ParticleInterpolation
 from PeriodicalBoundary    import periodic_boundary
 # Set parameter for the fluid.
 n_mesh = 32
-dt = 1e-3
+dt = 0.001
 T = 10
 nu = 0.04
 points = [Point(-2.0, -2.0,-3.0), Point(2.0, 2.0, 1.0)]
@@ -25,8 +25,8 @@ bcp = []
 bcu = []
 
 # Define function spaces for Navier-Stokes equations
-V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2)#, constrained_domain=periodic_boundary)
-Q = FunctionSpace(fluid_mesh, "Lagrange", 2)#, constrained_domain=periodic_boundary)
+V = VectorFunctionSpace(fluid_mesh, "Lagrange", 2, constrained_domain=periodic_boundary)
+Q = FunctionSpace(fluid_mesh, "Lagrange", 2, constrained_domain=periodic_boundary)
 
 # Define function space for left ventricle
 Vs = VectorFunctionSpace(solid_mesh, "Lagrange", 2)
