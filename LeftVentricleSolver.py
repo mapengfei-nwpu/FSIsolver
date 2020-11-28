@@ -10,7 +10,7 @@ from ParticleInterpolation import ParticleInterpolation
 from PeriodicalBoundary    import periodic_boundary
 # Set parameter for the fluid.
 n_mesh = 32
-dt = 1e-4
+dt = 1e-3
 T = 10
 nu = 0.04
 points = [Point(-2.0, -2.0,-3.0), Point(2.0, 2.0, 1.0)]
@@ -64,6 +64,7 @@ file_disp = File("disp.pvd")
 file_disp2 = File("disp2.pvd")
 
 # solver start.
+i = 0
 t = dt
 import time
 while t < T + DOLFIN_EPS:
@@ -72,7 +73,6 @@ while t < T + DOLFIN_EPS:
     u1, p1 = navier_stokes_solver.solve(u0, p0, bcu, bcp)
     u0.assign(u1)
     p0.assign(p1)
-    file_velocity << u1
     time_end=time.time()
     print('fluid solver : ',time_end-time_start,' second')
     # step 2. interpolate velocity from fluid to solid
@@ -92,18 +92,21 @@ while t < T + DOLFIN_EPS:
     # apply the boundary of the solid
     apply_boundary_conditions(disp,force,solid_boundary,marker_base,marker_wall)
     force.vector()[:] = force.vector()[:]*1e4
-    file_force << force
     # step 5. interpolate force from solid to fluid
     time_start=time.time()
     IB.solid_to_fluid(f, force)
     time_end=time.time()
     print('interpolation from solid to fluid : ',time_end-time_start,' second')
     logger.info("interpolation from solid to fluid")
-    file_force2 << f
-    # step 6. update variables and save to file.
-    file_disp << disp
+    # step 6. update variables and save results to files.
     t += dt
     print(t)
+    i = i +1
+    if i%10 == 0:
+        file_force << force
+        file_force2 << f
+        file_velocity << u1
+        file_disp << disp
 
 
 
