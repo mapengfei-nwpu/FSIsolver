@@ -25,7 +25,7 @@ disp_expression = Expression(("x[0]","x[1]"),degree=2)
 disp = Function(Vs)
 disp.interpolate(disp_expression)
 
-IB = IBInterpolation(regular_mesh, solid_mesh, us._cpp_object)
+IB = IBInterpolation(regular_mesh, solid_mesh, FunctionSpace(solid_mesh, "P", 2)._cpp_object)
 
 IB.evaluate_current_points(disp._cpp_object)
 IB.fluid_to_solid(uf._cpp_object,us._cpp_object)
@@ -39,3 +39,18 @@ IB.solid_to_fluid(uf._cpp_object,us._cpp_object)
 
 File("uf.pvd") << uf
 print(assemble(uf[0]*dx))
+
+Vf_t = TensorFunctionSpace(fluid_mesh, "P", 2)
+Vs_t = TensorFunctionSpace(solid_mesh, "P", 2)
+
+uf_t = interpolate(Expression((("1","2"),("3","4")),degree=2), Vf_t)
+us_t = Function(Vs_t)
+
+IB.fluid_to_solid(uf_t._cpp_object,us_t._cpp_object)
+File("us_t.pvd") << us_t
+
+uf_t = Function(Vf_t)
+us_t = interpolate(Expression((("sin(100*x[0])","sin(100*x[1])"),("cos(100*x[0])","cos(100*x[1])")),degree=2), Vs_t)
+
+IB.solid_to_fluid(uf_t._cpp_object,us_t._cpp_object)
+File("uf_t.pvd") << uf_t

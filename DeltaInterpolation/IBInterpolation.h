@@ -74,7 +74,7 @@ public:
 	/// construct function.
 	IBInterpolation(std::shared_ptr<IBMesh> fluid_mesh, 
 					std::shared_ptr<Mesh> solid_mesh,
-					std::shared_ptr<Function> solid) : 
+					std::shared_ptr<FunctionSpace> solid_function_space) : 
 		fluid_mesh(fluid_mesh),
 		solid_mesh(solid_mesh)
 	{
@@ -86,11 +86,10 @@ public:
 		current_gauss_points.resize(reference_gauss_points.size());
 
 		/// 
-		auto dof_coordinates = solid->function_space()->tabulate_dof_coordinates();
-		for (size_t i = 0; i < dof_coordinates.size(); i += 4)
+		auto dof_coordinates = solid_function_space->tabulate_dof_coordinates();
+		for (size_t i = 0; i < dof_coordinates.size(); ++i)
 		{
 			reference_dof_points.push_back(dof_coordinates[i]);
-			reference_dof_points.push_back(dof_coordinates[i + 1]);
 		}
 		current_dof_points.resize(reference_dof_points.size());
 	}
@@ -126,9 +125,13 @@ public:
 	void fluid_to_solid(Function &fluid, Function &solid)
 	{
 		/// calculate global dof coordinates and dofs.
-		std::vector<double> values(current_dof_points.size());
-		fluid_to_solid_raw(fluid, values, current_dof_points);
-		solid.vector()->set_local(values);
+		if (fluid.value_size() != solid.value_size()){
+			printf("WARNING: value sizes of fluid function and solid function is not equal!\n");
+		}
+
+		std::vector<double> solid_values;
+		fluid_to_solid_raw(fluid, solid_values, current_dof_points);
+		solid.vector()->set_local(solid_values);
 	}
 
 	void fluid_to_solid_raw(const Function &fluid, 
@@ -137,33 +140,42 @@ public:
 	{
 		/// smart shortcut
 		auto value_size   = fluid.value_size();
+		auto dofs_number  =solid_coordinates.size()/2;
+		solid_values.resize(value_size*dofs_number);
 
 		/// iterate every solid_values coordinate.
-		for (size_t i = 0; i < solid_values.size() / value_size; i++)
+		for (size_t i = 0; i < dofs_number; i++)
 		{
 			Array<double> x(2);
-			Array<double> v(2);
+			Array<double> v(value_size);
 			x[0] = solid_coordinates[2*i];
 			x[1] = solid_coordinates[2*i+1];
 			fluid.eval(v, x);
-			for (size_t j = 0; j < value_size; j++)
+			for (size_t j = 0; j < value_size; j++){
 				solid_values[i * value_size + j] = v[j];
+			}
 		}
 	}
 
 	/// Assign the solid displacement with the velocity of fluid.
 	void solid_to_fluid(Function &fluid, Function &solid)
 	{
+		auto value_size = solid.value_size();
+		if (fluid.value_size() != solid.value_size()){
+			printf("WARNING: value sizes of fluid function and solid function is not equal!\n");
+		}
+
 		/// calculate global dof coordinates and dofs of solid.
 		std::vector<double> solid_values;
 		for (size_t i = 0; i < reference_gauss_points.size()/2; ++i){
 			Array<double> x(2);
-			Array<double> v(2);
+			Array<double> v(value_size);
 			x[0] = reference_gauss_points[2*i];
 			x[1] = reference_gauss_points[2*i+1];
 			solid.eval(v, x);
-			solid_values.push_back(v[0]);
-			solid_values.push_back(v[1]);
+			for (size_t j = 0; j < value_size; ++j){
+				solid_values.push_back(v[j]);
+			}
 		}
 		auto fluid_values = solid_to_fluid_raw(fluid, solid_values, current_gauss_points, weights);
 
@@ -203,6 +215,7 @@ public:
 
 		/// initial local fluid values.
 		std::vector<double> local_fluid_values(global_fluid_size);
+
 
 		/// iterate every solid_values coordinate.
 		for (size_t i = 0; i < solid_values.size() / value_size; i++)
@@ -307,7 +320,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(IBInterpolation, m)
 {
     py::class_<IBInterpolation>(m, "IBInterpolation")
-        .def(py::init<std::shared_ptr<IBMesh>, std::shared_ptr<Mesh>, std::shared_ptr<Function>>())
+        .def(py::init<std::shared_ptr<IBMesh>, std::shared_ptr<Mesh>, std::shared_ptr<FunctionSpace>>())
 		.def("solid_to_fluid", &IBInterpolation::solid_to_fluid)
 		.def("fluid_to_solid", &IBInterpolation::fluid_to_solid)
 		.def("evaluate_current_points", &IBInterpolation::evaluate_current_points)
